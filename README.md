@@ -1,27 +1,25 @@
-# Rúbrica Aluno & Professor
+# Rubrica Aluno & Professor
 
-Sistema de avaliação por rúbrica com duas interfaces independentes: uma para o aluno registrar sua autoavaliação e outra para o professor avaliar cada aluno individualmente.
+> Sistema de avaliação por rubrica com duas interfaces independentes: uma para o aluno registrar sua autoavaliação e outra restrita para o professor realizar avaliações individuais.
 
-## Funcionalidades
+## Visão Geral
+
+Este projeto elimina o uso de planilhas complexas, oferecendo um sistema simples em HTML/JS sem necessidade de backend, utilizando armazenamento local (`localStorage`).
 
 ### Aluno (`aluno/index.html`)
-- Autoavaliação por nível de desempenho (1 a 4)
-- Avaliação da qualidade da aula
-- Gráfico de evolução ao longo do tempo
-- Histórico de registros com edição e exclusão
-- Armazenamento local (localStorage)
+- Registro de autoavaliação (Nível 1 a 4).
+- Avaliação da qualidade da aula.
+- Histórico e gráficos de evolução temporal.
 
 ### Professor (`professor/index.html`)
-- Cadastro de turmas e alunos
-- Avaliação individual: desempenho, qualidade da aula e evolução
-- Histórico por aluno
-- Gráfico de linha com evolução de todos os alunos da turma
-- Quadrante de desempenho (scatter plot) por média
-- Armazenamento local (localStorage)
+- **Acesso Protegido**: Requer usuário e senha para acesso à área de gestão.
+- Cadastro e gerenciamento de turmas e alunos.
+- Avaliação de desempenho individual e histórico da turma.
+- Visualização em Scatter Plot (Quadrante de Desempenho) e Line Chart (Evolução).
 
-## Rúbrica de níveis
+## Níveis de Avaliação
 
-| Nível | Desempenho do aluno | Qualidade da aula |
+| Nível | Desempenho do Aluno | Qualidade da Aula |
 |-------|--------------------|--------------------|
 | 🔴 1  | Iniciante          | Confusa            |
 | 🟠 2  | Básico             | Regular            |
@@ -30,17 +28,19 @@ Sistema de avaliação por rúbrica com duas interfaces independentes: uma para 
 
 ## Como usar
 
-Abra diretamente no navegador — não requer servidor ou instalação:
+O sistema roda diretamente no navegador, dispensando servidores locais ou banco de dados.
 
-```
-aluno/index.html     → interface do aluno
-professor/index.html → interface do professor
-```
+1. Hospede em um servidor estático (ex: GitLab Pages, GitHub Pages) ou apenas abra os arquivos localmente.
+2. Navegue até o portal desejado:
+   - `aluno/index.html` (Portal dos Alunos)
+   - `professor/index.html` (Portal dos Professores)
+
+*Nota: As credenciais de acesso do portal do professor são tratadas localmente. A documentação sobre credenciais padrão não é disponibilizada de forma pública.*
 
 ## Tecnologias
 
-- HTML5 + CSS3 (puro, sem framework)
-- JavaScript vanilla
-- [Chart.js](https://www.chartjs.org/) para gráficos
+- HTML5 + CSS3 (Sem frameworks de terceiros)
+- JavaScript Vanilla
+- [Chart.js](https://www.chartjs.org/) para análise de dados e métricas
 - [Font Awesome 6](https://fontawesome.com/) para ícones
-- localStorage para persistência de dados
+- Web Crypto API para segurança de credenciais client-side

@@ -520,33 +520,36 @@ function renderGraficos() {
     renderGraficoQuadrante();
 }
 
-// Hash SHA-256 da senha de acesso
-const EXPECTED_HASH = '811f0a6ebc4535d48e341fe4ab5233313bca2e345e037a956b26a2d9a144cc2d';
+// Hashes SHA-256 de credenciais de acesso
+const EXPECTED_USER_HASH = '5c62dbb490ed71afc967ac2b74283691217656988d9d291cdc18d13e0b03aaec';
+const EXPECTED_PASS_HASH = '811f0a6ebc4535d48e341fe4ab5233313bca2e345e037a956b26a2d9a144cc2d';
 
-async function hashPassword(password) {
+async function hashText(text) {
     const encoder = new TextEncoder();
-    const data = encoder.encode(password);
+    const data = encoder.encode(text);
     const hash = await crypto.subtle.digest('SHA-256', data);
     return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 async function handleLogin() {
-    const input = document.getElementById('senhaInput').value;
+    const userVal = document.getElementById('userInput').value.trim();
+    const passVal = document.getElementById('senhaInput').value;
     const erro = document.getElementById('loginErro');
     
-    if (!input) {
-        erro.textContent = 'Digite a senha.';
+    if (!userVal || !passVal) {
+        erro.textContent = 'Preencha usuário e senha.';
         erro.style.display = 'block';
         return;
     }
     
-    const hashed = await hashPassword(input);
+    const hashedUser = await hashText(userVal);
+    const hashedPass = await hashText(passVal);
     
-    if (hashed === EXPECTED_HASH) {
+    if (hashedUser === EXPECTED_USER_HASH && hashedPass === EXPECTED_PASS_HASH) {
         sessionStorage.setItem('prof_auth', 'true');
         initApp();
     } else {
-        erro.textContent = 'Senha incorreta. Tente novamente.';
+        erro.textContent = 'Usuário ou senha incorretos.';
         erro.style.display = 'block';
     }
 }
@@ -554,6 +557,9 @@ async function handleLogin() {
 document.getElementById('btnEntrar').addEventListener('click', handleLogin);
 document.getElementById('senhaInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') handleLogin();
+});
+document.getElementById('userInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('senhaInput').focus();
 });
 
 function initApp() {
