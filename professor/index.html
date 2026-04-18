@@ -28,9 +28,16 @@
 
     <!-- Rubrica -->
     <div class="card">
-        <div class="card-header">
-            <i class="fas fa-chalkboard-user"></i>
-            <h2>Rubrica do Professor &nbsp;<span style="font-size:0.88rem;font-weight:400;">Avaliação de alunos</span></h2>
+        <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+                <i class="fas fa-chalkboard-user"></i>
+                <h2>Rubrica do Professor &nbsp;<span style="font-size:0.88rem;font-weight:400;">Avaliação de alunos</span></h2>
+            </div>
+            <div class="acoes-dados" style="display:flex; gap:8px;">
+                <button id="btnExport" class="btn btn-sm" style="background:#f8fafc; color:#334155; border:1px solid #cbd5e1; padding: 6px 10px; font-size: 0.85rem;"><i class="fas fa-download"></i> Exportar</button>
+                <button id="btnImport" class="btn btn-sm" style="background:#f8fafc; color:#334155; border:1px solid #cbd5e1; padding: 6px 10px; font-size: 0.85rem;"><i class="fas fa-upload"></i> Importar</button>
+                <input type="file" id="fileImport" accept=".json" style="display:none;">
+            </div>
         </div>
         <div class="badge-rubrica">
             <div class="rubrica-title"><i class="fas fa-star"></i> Rubrica de avaliação</div>

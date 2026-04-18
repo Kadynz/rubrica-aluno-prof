@@ -577,6 +577,59 @@ document.getElementById('userInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('senhaInput').focus();
 });
 
+// Importação / Exportação de Dados
+document.getElementById('btnExport').addEventListener('click', () => {
+    const data = { turmas, alunos, avaliacoes };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rubrica_professor_backup_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+});
+
+document.getElementById('btnImport').addEventListener('click', () => {
+    document.getElementById('fileImport').click();
+});
+
+document.getElementById('fileImport').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = ev => {
+        try {
+            const data = JSON.parse(ev.target.result);
+            // Basic validation check
+            if (Array.isArray(data.turmas) && Array.isArray(data.alunos) && Array.isArray(data.avaliacoes)) {
+                if (confirm('Atenção: A importação substituirá todos os dados atuais. Deseja continuar?')) {
+                    turmas = data.turmas;
+                    alunos = data.alunos;
+                    avaliacoes = data.avaliacoes;
+                    salvar(true);
+                    turmaAtiva = null;
+                    alunoAtivo = null;
+                    renderTurmas();
+                    ocultar('secaoAlunos');
+                    ocultar('secaoAvaliacao');
+                    ocultar('secaoHistorico');
+                    renderGraficos();
+                    alert('Dados importados com sucesso!');
+                }
+            } else {
+                alert('O arquivo JSON não possui o formato correto de backup.');
+            }
+        } catch (err) {
+            alert('Erro ao ler o arquivo JSON. Arquivo corrompido ou inválido.');
+        }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Reset input so the same file can be selected again
+});
+
 function initApp() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('appContent').style.display = 'block';
