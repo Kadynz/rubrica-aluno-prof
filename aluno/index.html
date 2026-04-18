@@ -46,16 +46,16 @@
         <form id="avaliacaoForm">
             <input type="hidden" id="editId">
             <div class="form-group">
-                <label><i class="fas fa-book-open"></i> Nome da aula / atividade</label>
-                <input type="text" id="lessonName" placeholder="Ex: Frações, Crase, Funções..." required>
+                <label for="lessonName"><i class="fas fa-book-open"></i> Nome da aula / atividade</label>
+                <input type="text" id="lessonName" placeholder="Ex: Frações, Crase, Funções..." maxlength="100" required>
             </div>
             <div class="form-group">
-                <label><i class="far fa-calendar-alt"></i> Data</label>
+                <label for="lessonDate"><i class="far fa-calendar-alt"></i> Data</label>
                 <input type="date" id="lessonDate" required>
             </div>
             <div class="double-select">
                 <div class="form-group">
-                    <label><i class="fas fa-user-check"></i> Meu desempenho</label>
+                    <label for="studentLevel"><i class="fas fa-user-check"></i> Meu desempenho</label>
                     <select id="studentLevel">
                         <option value="1">Nível 1 – Iniciante</option>
                         <option value="2">Nível 2 – Básico</option>
@@ -64,7 +64,7 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label><i class="fas fa-chalkboard-user"></i> Avaliação da aula</label>
+                    <label for="classLevel"><i class="fas fa-chalkboard-user"></i> Avaliação da aula</label>
                     <select id="classLevel">
                         <option value="1">Nível 1 – Confusa</option>
                         <option value="2">Nível 2 – Regular</option>
@@ -101,7 +101,7 @@
             </div>
         </div>
         <div class="chart-wrapper">
-            <canvas id="evolucaoChart"></canvas>
+            <canvas id="evolucaoChart" role="img" aria-label="Gráfico de linha mostrando a evolução do desempenho"></canvas>
         </div>
         <div class="chart-hint">📈 Evolução do meu desempenho ao longo das aulas</div>
     </div>
@@ -113,7 +113,7 @@
             <h2>Histórico de avaliações</h2>
         </div>
         <div id="listaRegistros">
-            <div class="empty-message"><i class="fas fa-clipboard-list"></i><br>Nenhum registro ainda.</div>
+            <div class="empty-message" aria-live="polite"><i class="fas fa-clipboard-list"></i><br>Nenhum registro ainda.</div>
         </div>
     </div>
 

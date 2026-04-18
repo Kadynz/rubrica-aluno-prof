@@ -120,7 +120,7 @@ function selecionarTurma(id) {
 function renderTurmas() {
     const el = document.getElementById('listaTurmas');
     if (!turmas.length) {
-        el.innerHTML = '<div class="aviso"><i class="fas fa-school"></i><br>Nenhuma turma cadastrada.</div>';
+        el.innerHTML = '<div class="aviso" aria-live="polite"><i class="fas fa-school"></i><br>Nenhuma turma cadastrada.</div>';
         return;
     }
     
@@ -205,7 +205,7 @@ function renderAlunos() {
     const el = document.getElementById('listaAlunos');
     const list = alunos.filter(a => a.turmaId === turmaAtiva);
     if (!list.length) {
-        el.innerHTML = '<div class="aviso"><i class="fas fa-user-slash"></i><br>Nenhum aluno nesta turma.</div>';
+        el.innerHTML = '<div class="aviso" aria-live="polite"><i class="fas fa-user-slash"></i><br>Nenhum aluno nesta turma.</div>';
         return;
     }
     
@@ -312,7 +312,7 @@ function renderHistorico() {
     }
     
     if (!reg.length) {
-        el.innerHTML = '<div class="aviso"><i class="fas fa-clipboard-list"></i><br>Nenhuma avaliação encontrada.</div>';
+        el.innerHTML = '<div class="aviso" aria-live="polite"><i class="fas fa-clipboard-list"></i><br>Nenhuma avaliação encontrada.</div>';
         return;
     }
     
@@ -350,8 +350,18 @@ document.getElementById('listaHistorico').addEventListener('click', e => {
 });
 
 // History Filters
-document.getElementById('filtroAula').addEventListener('input', renderHistorico);
-document.getElementById('filtroData').addEventListener('input', renderHistorico);
+function debounce(func, delay) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), delay);
+    };
+}
+
+const renderHistoricoDebounced = debounce(renderHistorico, 300);
+
+document.getElementById('filtroAula').addEventListener('input', renderHistoricoDebounced);
+document.getElementById('filtroData').addEventListener('input', renderHistoricoDebounced);
 
 let chartLinha = null;
 let chartQuadrante = null;
@@ -577,19 +587,115 @@ document.getElementById('userInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('senhaInput').focus();
 });
 
+document.getElementById('toggleSenhaBtn').addEventListener('click', function() {
+    const senhaInput = document.getElementById('senhaInput');
+    const icon = this.querySelector('i');
+    if (senhaInput.type === 'password') {
+        senhaInput.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+        this.setAttribute('aria-label', 'Esconder senha');
+    } else {
+        senhaInput.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+        this.setAttribute('aria-label', 'Mostrar senha');
+    }
+});
+
 // Importação / Exportação de Dados
 document.getElementById('btnExport').addEventListener('click', () => {
-    const data = { turmas, alunos, avaliacoes };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const escopoSelect = document.getElementById('exportEscopo');
+    escopoSelect.innerHTML = '<option value="all">Todos os dados (Backup Completo)</option>';
+    turmas.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = `Somente a turma: ${t.nome}`;
+        escopoSelect.appendChild(opt);
+    });
+    document.getElementById('modalExport').style.display = 'flex';
+});
+
+document.getElementById('btnCancelExport').addEventListener('click', () => {
+    document.getElementById('modalExport').style.display = 'none';
+});
+
+document.getElementById('btnConfirmExport').addEventListener('click', () => {
+    const escopo = document.getElementById('exportEscopo').value;
+    const formato = document.getElementById('exportFormato').value;
+    
+    let expTurmas = turmas;
+    let expAlunos = alunos;
+    let expAvaliacoes = avaliacoes;
+    
+    if (escopo !== 'all') {
+        const tId = Number(escopo);
+        expTurmas = turmas.filter(t => t.id === tId);
+        expAlunos = alunos.filter(a => a.turmaId === tId);
+        const alunoIds = new Set(expAlunos.map(a => a.id));
+        expAvaliacoes = avaliacoes.filter(av => alunoIds.has(av.alunoId));
+    }
+    
+    if (formato === 'json') {
+        const data = { turmas: expTurmas, alunos: expAlunos, avaliacoes: expAvaliacoes };
+        baixarArquivo(JSON.stringify(data, null, 2), 'application/json', 'json');
+    } else if (formato === 'csv') {
+        const csvContent = gerarCSV(expTurmas, expAlunos, expAvaliacoes);
+        baixarArquivo(csvContent, 'text/csv;charset=utf-8', 'csv');
+    }
+    
+    document.getElementById('modalExport').style.display = 'none';
+});
+
+function baixarArquivo(conteudo, mimeType, extensao) {
+    const blob = new Blob([conteudo], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `rubrica_professor_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `rubrica_professor_${new Date().toISOString().split('T')[0]}.${extensao}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-});
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+function gerarCSV(tList, aList, avList) {
+    let csv = "Turma;Aluno;Data;Lição;Desempenho;Qualidade da Aula;Evolução\n";
+    const mapaTurmas = {};
+    tList.forEach(t => mapaTurmas[t.id] = t.nome);
+    const mapaAlunos = {};
+    aList.forEach(a => mapaAlunos[a.id] = { nome: a.nome, turmaId: a.turmaId });
+    
+    const sortedAv = [...avList].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    const escapeCSV = (str) => {
+        if (str == null) return "";
+        const s = String(str);
+        if (s.includes(";") || s.includes('"') || s.includes("\n")) {
+            return `"${s.replace(/"/g, '""')}"`;
+        }
+        return s;
+    };
+
+    sortedAv.forEach(av => {
+        const aluno = mapaAlunos[av.alunoId];
+        if (!aluno) return;
+        const turmaNome = mapaTurmas[aluno.turmaId] || "Desconhecida";
+        
+        const row = [
+            escapeCSV(turmaNome),
+            escapeCSV(aluno.nome),
+            escapeCSV(av.date),
+            escapeCSV(av.lesson),
+            av.desempenho,
+            av.aula,
+            av.evolucao
+        ];
+        csv += row.join(";") + "\n";
+    });
+    
+    return "\uFEFF" + csv;
+}
 
 document.getElementById('btnImport').addEventListener('click', () => {
     document.getElementById('fileImport').click();
@@ -624,10 +730,11 @@ document.getElementById('fileImport').addEventListener('change', e => {
             }
         } catch (err) {
             alert('Erro ao ler o arquivo JSON. Arquivo corrompido ou inválido.');
+        } finally {
+            e.target.value = ''; // Reset input
         }
     };
     reader.readAsText(file);
-    e.target.value = ''; // Reset input so the same file can be selected again
 });
 
 function initApp() {

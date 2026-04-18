@@ -57,7 +57,7 @@ function ordenar() {
 function renderizarLista() {
     const container = document.getElementById('listaRegistros');
     if (!registros.length) {
-        container.innerHTML = '<div class="empty-message"><i class="fas fa-clipboard-list"></i><br>Nenhum registro ainda.</div>';
+        container.innerHTML = '<div class="empty-message" aria-live="polite"><i class="fas fa-clipboard-list"></i><br>Nenhum registro ainda.</div>';
         return;
     }
     

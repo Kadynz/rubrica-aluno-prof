@@ -14,10 +14,13 @@
         <h2><i class="fas fa-lock" style="color:#16a34a; margin-bottom:15px; font-size:2.5rem;"></i><br>Acesso Restrito</h2>
         <p style="color: #64748b; margin-bottom: 25px; font-size:0.9rem;">Área exclusiva. Digite seu usuário e senha para acessar o portal.</p>
         <div class="form-group" style="margin-bottom: 15px;">
-            <input type="text" id="userInput" placeholder="Usuário" autocomplete="username" style="text-align: center; font-size:1.1rem; padding: 15px; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px;">
+            <input type="text" id="userInput" placeholder="Usuário" aria-label="Usuário" autocomplete="username" style="text-align: center; font-size:1.1rem; padding: 15px; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px;">
         </div>
-        <div class="form-group" style="margin-bottom: 20px;">
-            <input type="password" id="senhaInput" placeholder="Senha de acesso" autocomplete="current-password" style="text-align: center; font-size:1.1rem; padding: 15px; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px;">
+        <div class="form-group" style="margin-bottom: 20px; position: relative;">
+            <input type="password" id="senhaInput" placeholder="Senha de acesso" aria-label="Senha de acesso" autocomplete="current-password" style="text-align: center; font-size:1.1rem; padding: 15px; padding-right: 45px; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px;">
+            <button type="button" id="toggleSenhaBtn" aria-label="Mostrar senha" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748b; font-size: 1.1rem;">
+                <i class="fas fa-eye"></i>
+            </button>
         </div>
         <button class="btn btn-primary" id="btnEntrar" style="width: 100%; padding: 14px; font-size: 1.05rem;">Entrar</button>
         <div id="loginErro" style="color: #ef4444; margin-top: 15px; display: none; font-size: 0.85rem; font-weight:600;">Senha incorreta. Tente novamente.</div>
@@ -75,11 +78,11 @@
             <h2>Turmas</h2>
         </div>
         <div class="add-row">
-            <input type="text" id="novaTurma" placeholder="Nome da turma (ex: 7º Ano A)" maxlength="60">
+            <input type="text" id="novaTurma" placeholder="Nome da turma (ex: 7º Ano A)" aria-label="Nome da nova turma" maxlength="60">
             <button class="btn btn-primary btn-sm" id="btnNovaTurma"><i class="fas fa-plus"></i> Adicionar</button>
         </div>
         <div class="lista-turmas" id="listaTurmas">
-            <div class="aviso"><i class="fas fa-school"></i><br>Nenhuma turma cadastrada.</div>
+            <div class="aviso" aria-live="polite"><i class="fas fa-school"></i><br>Nenhuma turma cadastrada.</div>
         </div>
     </div>
 
@@ -90,11 +93,11 @@
             <h2>Alunos — <span id="nomeTurmaSel" style="font-weight:400;font-size:1rem;"></span></h2>
         </div>
         <div class="add-row">
-            <input type="text" id="novoAluno" placeholder="Nome do aluno" maxlength="80">
+            <input type="text" id="novoAluno" placeholder="Nome do aluno" aria-label="Nome do novo aluno" maxlength="80">
             <button class="btn btn-primary btn-sm" id="btnNovoAluno"><i class="fas fa-user-plus"></i> Adicionar</button>
         </div>
         <div class="lista-alunos" id="listaAlunos">
-            <div class="aviso"><i class="fas fa-user-slash"></i><br>Nenhum aluno nesta turma.</div>
+            <div class="aviso" aria-live="polite"><i class="fas fa-user-slash"></i><br>Nenhum aluno nesta turma.</div>
         </div>
     </div>
 
@@ -112,17 +115,17 @@
             <input type="hidden" id="editAvalId">
             <div class="double-col">
                 <div class="form-group">
-                    <label><i class="far fa-calendar-alt"></i> Data</label>
+                    <label for="avalDate"><i class="far fa-calendar-alt"></i> Data</label>
                     <input type="date" id="avalDate" required>
                 </div>
                 <div class="form-group">
-                    <label><i class="fas fa-book-open"></i> Aula / Atividade</label>
-                    <input type="text" id="avalLesson" placeholder="Ex: Equações, Leitura..." required>
+                    <label for="avalLesson"><i class="fas fa-book-open"></i> Aula / Atividade</label>
+                    <input type="text" id="avalLesson" placeholder="Ex: Equações, Leitura..." maxlength="100" required>
                 </div>
             </div>
             <div class="double-col">
                 <div class="form-group">
-                    <label><i class="fas fa-user-check"></i> Desempenho do aluno</label>
+                    <label for="avalDesempenho"><i class="fas fa-user-check"></i> Desempenho do aluno</label>
                     <select id="avalDesempenho">
                         <option value="1">Nível 1 – Iniciante</option>
                         <option value="2">Nível 2 – Básico</option>
@@ -131,7 +134,7 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label><i class="fas fa-chalkboard"></i> Qualidade da aula</label>
+                    <label for="avalAula"><i class="fas fa-chalkboard"></i> Qualidade da aula</label>
                     <select id="avalAula">
                         <option value="1">Nível 1 – Confusa</option>
                         <option value="2">Nível 2 – Regular</option>
@@ -141,7 +144,7 @@
                 </div>
             </div>
             <div class="form-group">
-                <label><i class="fas fa-arrow-trend-up"></i> Evolução do aluno</label>
+                <label for="avalEvolucao"><i class="fas fa-arrow-trend-up"></i> Evolução do aluno</label>
                 <select id="avalEvolucao">
                     <option value="1">⬇️ Regrediu</option>
                     <option value="2" selected>➡️ Manteve</option>
@@ -163,11 +166,11 @@
             <h2>Histórico — <span id="nomeAlunoHist" style="font-weight:400;font-size:1rem;"></span></h2>
         </div>
         <div class="filtros-historico" style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <input type="text" id="filtroAula" placeholder="Filtrar por aula (nome)" style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-            <input type="date" id="filtroData" style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+            <input type="text" id="filtroAula" placeholder="Filtrar por aula (nome)" aria-label="Filtrar por aula" style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+            <input type="date" id="filtroData" aria-label="Filtrar por data" style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
         </div>
         <div id="listaHistorico">
-            <div class="aviso"><i class="fas fa-clipboard-list"></i><br>Nenhuma avaliação registrada.</div>
+            <div class="aviso" aria-live="polite"><i class="fas fa-clipboard-list"></i><br>Nenhuma avaliação registrada.</div>
         </div>
     </div>
 
@@ -177,11 +180,11 @@
             <i class="fas fa-chart-line"></i>
             <h2>Evolução da Turma</h2>
         </div>
-        <div id="emptyLinha" class="aviso" style="padding:12px 0;">
+        <div id="emptyLinha" class="aviso" aria-live="polite" style="padding:12px 0;">
             <i class="fas fa-chart-line"></i><br>Registre avaliações para ver o gráfico.
         </div>
         <div class="chart-wrapper" id="wrapperLinha" style="display:none;">
-            <canvas id="graficoLinha"></canvas>
+            <canvas id="graficoLinha" role="img" aria-label="Gráfico de linha de evolução"></canvas>
         </div>
         <div class="chart-hint">📈 Desempenho de cada aluno ao longo do tempo</div>
     </div>
@@ -192,13 +195,40 @@
             <i class="fas fa-th-large"></i>
             <h2>Quadrante de Desempenho</h2>
         </div>
-        <div id="emptyQuadrante" class="aviso" style="padding:12px 0;">
+        <div id="emptyQuadrante" class="aviso" aria-live="polite" style="padding:12px 0;">
             <i class="fas fa-th-large"></i><br>Registre avaliações para ver o quadrante.
         </div>
         <div class="chart-wrapper" id="wrapperQuadrante" style="display:none;">
-            <canvas id="graficoQuadrante"></canvas>
+            <canvas id="graficoQuadrante" role="img" aria-label="Gráfico de quadrante de desempenho"></canvas>
         </div>
         <div class="chart-hint">X = Evolução média &nbsp;|&nbsp; Y = Desempenho médio</div>
+    </div>
+
+    <!-- Modal Exportação -->
+    <div id="modalExport" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
+        <div class="card" style="width: 100%; max-width: 400px; margin: 0; animation: slideUp 0.3s ease;">
+            <div class="card-header">
+                <i class="fas fa-file-export"></i>
+                <h2>Exportar Dados</h2>
+            </div>
+            <div class="form-group" style="margin-top:15px;">
+                <label for="exportEscopo">O que exportar?</label>
+                <select id="exportEscopo" class="select-form" aria-label="Escopo da exportação" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; margin-top: 5px;">
+                    <option value="all">Todos os dados (Backup Completo)</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-top:15px;">
+                <label for="exportFormato">Formato</label>
+                <select id="exportFormato" class="select-form" aria-label="Formato do arquivo" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; margin-top: 5px;">
+                    <option value="json">JSON (Para restauração/backup)</option>
+                    <option value="csv">CSV (Para análise no Excel)</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button id="btnConfirmExport" class="btn btn-primary" style="flex:1;"><i class="fas fa-check"></i> Exportar</button>
+                <button id="btnCancelExport" class="btn btn-sm" style="flex:1; background:#f1f5f9; color:#475569; border: 1px solid #cbd5e1;"><i class="fas fa-times"></i> Cancelar</button>
+            </div>
+        </div>
     </div>
 
 </div>
