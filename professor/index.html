@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+    <title>Rubrica do Professor | Avaliação de Alunos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background: #f1f5f9;
+            font-family: system-ui, 'Segoe UI', sans-serif;
+            color: #0f172a;
+        }
+
+        .container {
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 16px 12px 40px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 28px;
+            padding: 20px 18px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+            margin-bottom: 20px;
+        }
+
+        .secao { display: none; }
+        .secao.visivel { display: block; }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+            border-bottom: 2px solid #f0fdf4;
+            padding-bottom: 10px;
+        }
+
+        .card-header i {
+            font-size: 1.5rem;
+            color: #16a34a;
+            background: #f0fdf4;
+            padding: 10px;
+            border-radius: 50%;
+        }
+
+        .card-header h2 { font-size: 1.3rem; font-weight: 600; }
+
+        .badge-rubrica {
+            background: #f8fafc;
+            border-radius: 20px;
+            padding: 14px 16px;
+            border-left: 4px solid #16a34a;
+        }
+
+        .rubrica-title { font-weight: 700; margin-bottom: 10px; font-size: 0.9rem; }
+
+        .rubrica-section-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+
+        .rubrica-grid { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 8px; }
+
+        .nivel-item {
+            flex: 1;
+            min-width: 62px;
+            border-radius: 14px;
+            padding: 9px 4px;
+            text-align: center;
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+
+        .nivel-1 { background: #fee2e2; color: #991b1b; }
+        .nivel-2 { background: #fff3e3; color: #b45309; }
+        .nivel-3 { background: #e0f2fe; color: #0369a1; }
+        .nivel-4 { background: #dcfce7; color: #166534; }
+
+        .form-group { margin-bottom: 14px; }
+
+        label {
+            font-weight: 600;
+            font-size: 0.83rem;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin-bottom: 7px;
+            color: #1e293b;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            font-size: 0.93rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 24px;
+            background: #fff;
+            font-family: inherit;
+            transition: 0.2s;
+            appearance: auto;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #16a34a;
+            box-shadow: 0 0 0 3px rgba(22,163,74,0.2);
+        }
+
+        .double-col { display: flex; gap: 10px; flex-wrap: wrap; }
+        .double-col .form-group { flex: 1; min-width: 120px; }
+
+        .btn {
+            border: none;
+            padding: 12px 16px;
+            font-weight: 600;
+            font-size: 0.93rem;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: inherit;
+        }
+
+        .btn-primary  { background: #16a34a; color: white; box-shadow: 0 2px 6px rgba(22,163,74,0.3); }
+        .btn-primary:active  { background: #15803d; transform: scale(0.97); }
+        .btn-secondary { background: #f0fdf4; color: #166534; }
+        .btn-secondary:active { transform: scale(0.97); }
+        .btn-sm { padding: 9px 14px; font-size: 0.82rem; }
+
+        .btn-row { display: flex; gap: 10px; margin-top: 8px; }
+        .btn-row .btn { flex: 1; }
+
+        .add-row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 12px; }
+        .add-row input { flex: 1; }
+
+        .lista-turmas, .lista-alunos { display: flex; flex-direction: column; gap: 7px; }
+
+        .turma-item, .aluno-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 11px 14px;
+            border-radius: 18px;
+            border: 2px solid #e2e8f0;
+            background: #fefefe;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+
+        .turma-item.ativa { border-color: #16a34a; background: #f0fdf4; }
+        .aluno-item.ativo { border-color: #3b82f6; background: #eff6ff; }
+        .turma-item:hover, .aluno-item:hover { border-color: #94a3b8; }
+
+        .item-nome  { flex: 1; font-weight: 600; font-size: 0.93rem; }
+        .item-badge { font-size: 0.68rem; padding: 3px 9px; border-radius: 20px; background: #f1f5f9; color: #475569; }
+
+        .item-del {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: #ef4444;
+            padding: 4px 7px;
+            font-size: 0.95rem;
+            border-radius: 50%;
+        }
+
+        .item-del:hover { background: #fee2e2; }
+
+        .nivel-chip {
+            padding: 4px 11px;
+            border-radius: 30px;
+            font-size: 0.74rem;
+            font-weight: 600;
+        }
+
+        .chip-1 { background: #fee2e2; color: #991b1b; }
+        .chip-2 { background: #fff3e3; color: #b45309; }
+        .chip-3 { background: #e0f2fe; color: #0369a1; }
+        .chip-4 { background: #dcfce7; color: #166534; }
+        .chip-evo-1 { background: #fce7f3; color: #9d174d; }
+        .chip-evo-2 { background: #f1f5f9; color: #475569; }
+        .chip-evo-3 { background: #fff3e3; color: #b45309; }
+        .chip-evo-4 { background: #dcfce7; color: #166534; }
+
+        .registro-item {
+            background: #fefefe;
+            border-radius: 18px;
+            padding: 13px;
+            margin-bottom: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .registro-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 8px;
+        }
+
+        .registro-nome { font-weight: 700; font-size: 0.93rem; }
+
+        .registro-data {
+            font-size: 0.67rem;
+            color: #64748b;
+            background: #f1f5f9;
+            padding: 3px 9px;
+            border-radius: 40px;
+        }
+
+        .niveis-info { display: flex; gap: 7px; flex-wrap: wrap; margin: 6px 0 8px; }
+
+        .acoes { display: flex; gap: 7px; justify-content: flex-end; }
+
+        .acoes button {
+            border: none;
+            font-size: 0.76rem;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-edit    { color: #3b82f6; background: #eff6ff; }
+        .btn-del-reg { color: #ef4444; background: #fff1f2; }
+
+        .aluno-banner {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 14px;
+            padding: 9px 14px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: #1e40af;
+            font-size: 0.88rem;
+        }
+
+        .aviso {
+            text-align: center;
+            color: #94a3b8;
+            padding: 22px 10px;
+            font-size: 0.88rem;
+        }
+
+        .chart-wrapper { position: relative; height: 230px; }
+        .chart-hint { font-size: 0.67rem; text-align: center; margin-top: 8px; color: #64748b; }
+
+        footer {
+            text-align: center;
+            font-size: 0.67rem;
+            color: #94a3b8;
+            padding: 16px 0 28px;
+        }
+
+        @media (max-width: 480px) {
+            .container { padding: 10px 8px 30px; }
+            .card { padding: 15px 13px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- Rubrica -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-chalkboard-user"></i>
+            <h2>Rubrica do Professor &nbsp;<span style="font-size:0.88rem;font-weight:400;">Avaliação de alunos</span></h2>
+        </div>
+        <div class="badge-rubrica">
+            <div class="rubrica-title"><i class="fas fa-star"></i> Rubrica de avaliação</div>
+
+            <div class="rubrica-section-label">Desempenho do aluno</div>
+            <div class="rubrica-grid">
+                <div class="nivel-item nivel-1">🔴 Nível 1<br>Iniciante</div>
+                <div class="nivel-item nivel-2">🟠 Nível 2<br>Básico</div>
+                <div class="nivel-item nivel-3">🔵 Nível 3<br>Proficiente</div>
+                <div class="nivel-item nivel-4">🟢 Nível 4<br>Avançado</div>
+            </div>
+
+            <div class="rubrica-section-label" style="margin-top:8px;">Qualidade da aula</div>
+            <div class="rubrica-grid">
+                <div class="nivel-item nivel-1">🔴 Nível 1<br>Confusa</div>
+                <div class="nivel-item nivel-2">🟠 Nível 2<br>Regular</div>
+                <div class="nivel-item nivel-3">🔵 Nível 3<br>Boa</div>
+                <div class="nivel-item nivel-4">🟢 Nível 4<br>Excelente</div>
+            </div>
+
+            <div class="rubrica-section-label" style="margin-top:8px;">Evolução do aluno</div>
+            <div class="rubrica-grid" style="margin-bottom:0;">
+                <div class="nivel-item" style="background:#fce7f3;color:#9d174d;">⬇️ Regrediu</div>
+                <div class="nivel-item" style="background:#f1f5f9;color:#475569;">➡️ Manteve</div>
+                <div class="nivel-item nivel-2">⬆️ Progrediu</div>
+                <div class="nivel-item nivel-4">🚀 Evoluiu muito</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Turmas -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-school"></i>
+            <h2>Turmas</h2>
+        </div>
+        <div class="add-row">
+            <input type="text" id="novaTurma" placeholder="Nome da turma (ex: 7º Ano A)" maxlength="60">
+            <button class="btn btn-primary btn-sm" onclick="adicionarTurma()"><i class="fas fa-plus"></i> Adicionar</button>
+        </div>
+        <div class="lista-turmas" id="listaTurmas">
+            <div class="aviso"><i class="fas fa-school"></i><br>Nenhuma turma cadastrada.</div>
+        </div>
+    </div>
+
+    <!-- Alunos da turma (condicional) -->
+    <div class="card secao" id="secaoAlunos">
+        <div class="card-header">
+            <i class="fas fa-users"></i>
+            <h2>Alunos — <span id="nomeTurmaSel" style="font-weight:400;font-size:1rem;"></span></h2>
+        </div>
+        <div class="add-row">
+            <input type="text" id="novoAluno" placeholder="Nome do aluno" maxlength="80">
+            <button class="btn btn-primary btn-sm" onclick="adicionarAluno()"><i class="fas fa-user-plus"></i> Adicionar</button>
+        </div>
+        <div class="lista-alunos" id="listaAlunos">
+            <div class="aviso"><i class="fas fa-user-slash"></i><br>Nenhum aluno nesta turma.</div>
+        </div>
+    </div>
+
+    <!-- Avaliação (condicional) -->
+    <div class="card secao" id="secaoAvaliacao">
+        <div class="card-header">
+            <i class="fas fa-pen-to-square"></i>
+            <h2>Registrar avaliação</h2>
+        </div>
+        <div class="aluno-banner">
+            <i class="fas fa-user-graduate"></i>
+            <span id="nomeAlunoSel">—</span>
+        </div>
+        <form id="formAvaliacao">
+            <input type="hidden" id="editAvalId">
+            <div class="double-col">
+                <div class="form-group">
+                    <label><i class="far fa-calendar-alt"></i> Data</label>
+                    <input type="date" id="avalDate" required>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-book-open"></i> Aula / Atividade</label>
+                    <input type="text" id="avalLesson" placeholder="Ex: Equações, Leitura..." required>
+                </div>
+            </div>
+            <div class="double-col">
+                <div class="form-group">
+                    <label><i class="fas fa-user-check"></i> Desempenho do aluno</label>
+                    <select id="avalDesempenho">
+                        <option value="1">Nível 1 – Iniciante</option>
+                        <option value="2">Nível 2 – Básico</option>
+                        <option value="3" selected>Nível 3 – Proficiente</option>
+                        <option value="4">Nível 4 – Avançado</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-chalkboard"></i> Qualidade da aula</label>
+                    <select id="avalAula">
+                        <option value="1">Nível 1 – Confusa</option>
+                        <option value="2">Nível 2 – Regular</option>
+                        <option value="3" selected>Nível 3 – Boa</option>
+                        <option value="4">Nível 4 – Excelente</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-arrow-trend-up"></i> Evolução do aluno</label>
+                <select id="avalEvolucao">
+                    <option value="1">⬇️ Regrediu</option>
+                    <option value="2" selected>➡️ Manteve</option>
+                    <option value="3">⬆️ Progrediu</option>
+                    <option value="4">🚀 Evoluiu muito</option>
+                </select>
+            </div>
+            <div class="btn-row">
+                <button type="submit" class="btn btn-primary" id="btnSalvarAval"><i class="fas fa-save"></i> Salvar</button>
+                <button type="button" class="btn btn-secondary" id="btnCancelarAval"><i class="fas fa-times"></i> Cancelar</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Histórico do aluno (condicional) -->
+    <div class="card secao" id="secaoHistorico">
+        <div class="card-header">
+            <i class="fas fa-clock-rotate-left"></i>
+            <h2>Histórico — <span id="nomeAlunoHist" style="font-weight:400;font-size:1rem;"></span></h2>
+        </div>
+        <div id="listaHistorico">
+            <div class="aviso"><i class="fas fa-clipboard-list"></i><br>Nenhuma avaliação registrada.</div>
+        </div>
+    </div>
+
+    <!-- Gráfico de linha: evolução de todos os alunos -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-chart-line"></i>
+            <h2>Evolução da Turma</h2>
+        </div>
+        <div id="emptyLinha" class="aviso" style="padding:12px 0;">
+            <i class="fas fa-chart-line"></i><br>Registre avaliações para ver o gráfico.
+        </div>
+        <div class="chart-wrapper" id="wrapperLinha" style="display:none;">
+            <canvas id="graficoLinha"></canvas>
+        </div>
+        <div class="chart-hint">📈 Desempenho de cada aluno ao longo do tempo</div>
+    </div>
+
+    <!-- Gráfico de quadrante: posição de cada aluno -->
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-th-large"></i>
+            <h2>Quadrante de Desempenho</h2>
+        </div>
+        <div id="emptyQuadrante" class="aviso" style="padding:12px 0;">
+            <i class="fas fa-th-large"></i><br>Registre avaliações para ver o quadrante.
+        </div>
+        <div class="chart-wrapper" id="wrapperQuadrante" style="display:none;">
+            <canvas id="graficoQuadrante"></canvas>
+        </div>
+        <div class="chart-hint">X = Evolução média &nbsp;|&nbsp; Y = Desempenho médio</div>
+    </div>
+
+</div>
+<footer>Rubrica do Professor &nbsp;|&nbsp; Avaliação individual por aluno</footer>
+
+<script>
+    let turmas     = [];
+    let alunos     = [];
+    let avaliacoes = [];
+    let turmaAtiva = null;
+    let alunoAtivo = null;
+
+    const K_TURMAS = 'prof_turmas_v1';
+    const K_ALUNOS = 'prof_alunos_v1';
+    const K_AVALS  = 'prof_avaliacoes_v1';
+
+    const PALETTE = ['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#06b6d4','#f97316','#ec4899','#14b8a6','#84cc16'];
+
+    const DESEMPENHO = {
+        1:{emoji:'🔴',texto:'Iniciante',  cls:'chip-1'},
+        2:{emoji:'🟠',texto:'Básico',     cls:'chip-2'},
+        3:{emoji:'🔵',texto:'Proficiente',cls:'chip-3'},
+        4:{emoji:'🟢',texto:'Avançado',   cls:'chip-4'},
+    };
+    const QUALIDADE = {
+        1:{emoji:'🔴',texto:'Confusa',   cls:'chip-1'},
+        2:{emoji:'🟠',texto:'Regular',   cls:'chip-2'},
+        3:{emoji:'🔵',texto:'Boa',       cls:'chip-3'},
+        4:{emoji:'🟢',texto:'Excelente', cls:'chip-4'},
+    };
+    const EVOLUCAO = {
+        1:{emoji:'⬇️',texto:'Regrediu',     cls:'chip-evo-1'},
+        2:{emoji:'➡️',texto:'Manteve',      cls:'chip-evo-2'},
+        3:{emoji:'⬆️',texto:'Progrediu',    cls:'chip-evo-3'},
+        4:{emoji:'🚀',texto:'Evoluiu muito',cls:'chip-evo-4'},
+    };
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function formatarData(iso) { const [y,m,d] = iso.split('-'); return `${d}/${m}/${y}`; }
+    function hoje() { return new Date().toISOString().slice(0,10); }
+    function mostrar(id) { document.getElementById(id).classList.add('visivel'); }
+    function ocultar(id) { document.getElementById(id).classList.remove('visivel'); }
+
+    function carregarChave(k) {
+        try { const r = localStorage.getItem(k); const p = r ? JSON.parse(r) : []; return Array.isArray(p) ? p : []; }
+        catch { return []; }
+    }
+    function carregar() {
+        turmas     = carregarChave(K_TURMAS);
+        alunos     = carregarChave(K_ALUNOS);
+        avaliacoes = carregarChave(K_AVALS);
+    }
+    function salvar(comGraficos = false) {
+        localStorage.setItem(K_TURMAS, JSON.stringify(turmas));
+        localStorage.setItem(K_ALUNOS, JSON.stringify(alunos));
+        localStorage.setItem(K_AVALS,  JSON.stringify(avaliacoes));
+        if (comGraficos) renderGraficos();
+    }
+
+    function adicionarTurma() {
+        const inp = document.getElementById('novaTurma');
+        const nome = inp.value.trim();
+        if (!nome) { inp.focus(); return; }
+        turmas.push({ id: Date.now(), nome });
+        salvar(); inp.value = ''; renderTurmas();
+    }
+
+    document.getElementById('novaTurma').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); adicionarTurma(); }
+    });
+
+    function excluirTurma(id) {
+        const ids = alunos.filter(a => a.turmaId === id).map(a => a.id);
+        const msg = ids.length ? `Excluir esta turma? ${ids.length} aluno(s) e avaliações serão removidos.` : 'Excluir esta turma?';
+        if (!confirm(msg)) return;
+        avaliacoes = avaliacoes.filter(av => !ids.includes(av.alunoId));
+        alunos     = alunos.filter(a => a.turmaId !== id);
+        turmas     = turmas.filter(t => t.id !== id);
+        salvar(true);
+        if (turmaAtiva === id) { turmaAtiva = null; alunoAtivo = null; ocultar('secaoAlunos'); ocultar('secaoAvaliacao'); ocultar('secaoHistorico'); }
+        renderTurmas();
+    }
+
+    function selecionarTurma(id) {
+        turmaAtiva = id; alunoAtivo = null;
+        ocultar('secaoAvaliacao'); ocultar('secaoHistorico');
+        renderTurmas(); renderAlunos(); mostrar('secaoAlunos');
+    }
+
+    function renderTurmas() {
+        const el = document.getElementById('listaTurmas');
+        if (!turmas.length) { el.innerHTML = '<div class="aviso"><i class="fas fa-school"></i><br>Nenhuma turma cadastrada.</div>'; return; }
+        el.innerHTML = turmas.map(t => {
+            const qtd = alunos.filter(a => a.turmaId === t.id).length;
+            const cls = t.id === turmaAtiva ? ' ativa' : '';
+            return `<div class="turma-item${cls}" onclick="selecionarTurma(${t.id})">
+                <i class="fas fa-school" style="color:#16a34a;"></i>
+                <span class="item-nome">${escapeHtml(t.nome)}</span>
+                <span class="item-badge">${qtd} aluno${qtd !== 1 ? 's' : ''}</span>
+                <button class="item-del" onclick="event.stopPropagation();excluirTurma(${t.id})" title="Excluir"><i class="fas fa-trash-alt"></i></button>
+            </div>`;
+        }).join('');
+    }
+
+    function adicionarAluno() {
+        if (!turmaAtiva) return;
+        const inp = document.getElementById('novoAluno');
+        const nome = inp.value.trim();
+        if (!nome) { inp.focus(); return; }
+        alunos.push({ id: Date.now(), turmaId: turmaAtiva, nome });
+        salvar(); inp.value = ''; renderTurmas(); renderAlunos();
+    }
+
+    document.getElementById('novoAluno').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); adicionarAluno(); }
+    });
+
+    function excluirAluno(id) {
+        const qtd = avaliacoes.filter(av => av.alunoId === id).length;
+        if (!confirm(qtd ? `Excluir aluno? ${qtd} avaliação(ões) removidas.` : 'Excluir aluno?')) return;
+        avaliacoes = avaliacoes.filter(av => av.alunoId !== id);
+        alunos     = alunos.filter(a => a.id !== id);
+        salvar(true);
+        if (alunoAtivo === id) { alunoAtivo = null; ocultar('secaoAvaliacao'); ocultar('secaoHistorico'); }
+        renderTurmas(); renderAlunos();
+    }
+
+    function selecionarAluno(id) {
+        alunoAtivo = id;
+        limparFormAvaliacao(); renderAlunos(); renderHistorico();
+        const a = alunos.find(a => a.id === id);
+        document.getElementById('nomeAlunoSel').textContent  = a ? a.nome : '—';
+        document.getElementById('nomeAlunoHist').textContent = a ? a.nome : '—';
+        mostrar('secaoAvaliacao'); mostrar('secaoHistorico');
+        document.getElementById('secaoAvaliacao').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function renderAlunos() {
+        const turma = turmas.find(t => t.id === turmaAtiva);
+        document.getElementById('nomeTurmaSel').textContent = turma ? turma.nome : '';
+        const el  = document.getElementById('listaAlunos');
+        const list = alunos.filter(a => a.turmaId === turmaAtiva);
+        if (!list.length) { el.innerHTML = '<div class="aviso"><i class="fas fa-user-slash"></i><br>Nenhum aluno nesta turma.</div>'; return; }
+        el.innerHTML = list.map(a => {
+            const qtd = avaliacoes.filter(av => av.alunoId === a.id).length;
+            const cls = a.id === alunoAtivo ? ' ativo' : '';
+            return `<div class="aluno-item${cls}" onclick="selecionarAluno(${a.id})">
+                <i class="fas fa-user-graduate" style="color:#3b82f6;"></i>
+                <span class="item-nome">${escapeHtml(a.nome)}</span>
+                <span class="item-badge">${qtd} aval.</span>
+                <button class="item-del" onclick="event.stopPropagation();excluirAluno(${a.id})" title="Excluir"><i class="fas fa-trash-alt"></i></button>
+            </div>`;
+        }).join('');
+    }
+
+    document.getElementById('formAvaliacao').addEventListener('submit', e => {
+        e.preventDefault();
+        if (!alunoAtivo) return;
+        const editId     = document.getElementById('editAvalId').value;
+        const date       = document.getElementById('avalDate').value;
+        const lesson     = document.getElementById('avalLesson').value.trim();
+        const desempenho = +document.getElementById('avalDesempenho').value;
+        const aula       = +document.getElementById('avalAula').value;
+        const evolucao   = +document.getElementById('avalEvolucao').value;
+        if (!date)   { alert('Selecione a data.'); return; }
+        if (!lesson) { alert('Informe o nome da aula.'); return; }
+        if (editId) {
+            const idx = avaliacoes.findIndex(av => av.id === parseInt(editId));
+            if (idx !== -1) avaliacoes[idx] = { ...avaliacoes[idx], date, lesson, desempenho, aula, evolucao };
+        } else {
+            avaliacoes.push({ id: Date.now(), alunoId: alunoAtivo, date, lesson, desempenho, aula, evolucao });
+        }
+        avaliacoes.sort((a, b) => new Date(a.date) - new Date(b.date));
+        salvar(true); renderAlunos(); renderHistorico(); limparFormAvaliacao();
+    });
+
+    document.getElementById('btnCancelarAval').addEventListener('click', limparFormAvaliacao);
+
+    function limparFormAvaliacao() {
+        document.getElementById('editAvalId').value = '';
+        document.getElementById('avalDate').value   = hoje();
+        document.getElementById('avalLesson').value = '';
+        document.getElementById('avalDesempenho').value = '3';
+        document.getElementById('avalAula').value       = '3';
+        document.getElementById('avalEvolucao').value   = '2';
+        document.getElementById('btnSalvarAval').innerHTML = '<i class="fas fa-save"></i> Salvar';
+    }
+
+    function editarAvaliacao(id) {
+        const av = avaliacoes.find(a => a.id === id);
+        if (!av) return;
+        document.getElementById('editAvalId').value       = av.id;
+        document.getElementById('avalDate').value         = av.date;
+        document.getElementById('avalLesson').value       = av.lesson;
+        document.getElementById('avalDesempenho').value   = av.desempenho;
+        document.getElementById('avalAula').value         = av.aula;
+        document.getElementById('avalEvolucao').value     = av.evolucao;
+        document.getElementById('btnSalvarAval').innerHTML = '<i class="fas fa-pen"></i> Atualizar';
+        document.getElementById('secaoAvaliacao').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function excluirAvaliacao(id) {
+        if (!confirm('Excluir esta avaliação?')) return;
+        avaliacoes = avaliacoes.filter(av => av.id !== id);
+        salvar(true); renderHistorico();
+    }
+
+    function renderHistorico() {
+        const el  = document.getElementById('listaHistorico');
+        const reg = avaliacoes.filter(av => av.alunoId === alunoAtivo);
+        if (!reg.length) { el.innerHTML = '<div class="aviso"><i class="fas fa-clipboard-list"></i><br>Nenhuma avaliação registrada.</div>'; return; }
+        el.innerHTML = [...reg].reverse().map(av => {
+            const d  = DESEMPENHO[av.desempenho] || DESEMPENHO[1];
+            const q  = QUALIDADE[av.aula]        || QUALIDADE[1];
+            const ev = EVOLUCAO[av.evolucao]     || EVOLUCAO[1];
+            return `<div class="registro-item">
+                <div class="registro-header">
+                    <span class="registro-nome"><i class="fas fa-chalkboard" style="color:#16a34a;margin-right:5px;"></i>${escapeHtml(av.lesson)}</span>
+                    <span class="registro-data"><i class="far fa-calendar"></i> ${formatarData(av.date)}</span>
+                </div>
+                <div class="niveis-info">
+                    <span class="nivel-chip ${d.cls}"><i class="fas fa-user-graduate"></i> ${d.emoji} ${d.texto}</span>
+                    <span class="nivel-chip ${q.cls}"><i class="fas fa-chalkboard"></i> ${q.emoji} ${q.texto}</span>
+                    <span class="nivel-chip ${ev.cls}"><i class="fas fa-arrow-trend-up"></i> ${ev.emoji} ${ev.texto}</span>
+                </div>
+                <div class="acoes">
+                    <button class="btn-edit"    onclick="editarAvaliacao(${av.id})"><i class="fas fa-edit"></i> Editar</button>
+                    <button class="btn-del-reg" onclick="excluirAvaliacao(${av.id})"><i class="fas fa-trash-alt"></i> Excluir</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    let chartLinha     = null;
+    let chartQuadrante = null;
+
+    // Plugin que desenha linhas de quadrante e labels dos alunos no scatter
+    const quadrantPlugin = {
+        id: 'quadrantLines',
+        afterDraw(chart) {
+            const { ctx, chartArea, scales } = chart;
+            if (!scales.x || !scales.y || !chartArea) return;
+            const midX = scales.x.getPixelForValue(2.5);
+            const midY = scales.y.getPixelForValue(2.5);
+
+            ctx.save();
+            ctx.strokeStyle = 'rgba(100,116,139,0.35)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([6, 4]);
+
+            ctx.beginPath(); ctx.moveTo(midX, chartArea.top);    ctx.lineTo(midX, chartArea.bottom); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(chartArea.left, midY);    ctx.lineTo(chartArea.right, midY);  ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.font = '10px system-ui, sans-serif';
+            ctx.fillStyle = 'rgba(100,116,139,0.65)';
+            ctx.fillText('🔄 Em Manutenção', chartArea.left + 4, chartArea.top + 13);
+            ctx.fillText('🚀 Destaque',       midX + 4,           chartArea.top + 13);
+            ctx.fillText('⚠️ Atenção',        chartArea.left + 4, chartArea.bottom - 4);
+            ctx.fillText('📈 Em Progresso',   midX + 4,           chartArea.bottom - 4);
+
+            chart.data.datasets.forEach((ds, i) => {
+                const meta = chart.getDatasetMeta(i);
+                if (!meta.visible) return;
+                meta.data.forEach(pt => {
+                    ctx.font = 'bold 10px system-ui, sans-serif';
+                    ctx.fillStyle = ds.backgroundColor;
+                    ctx.fillText(ds.label, pt.x + 10, pt.y - 5);
+                });
+            });
+
+            ctx.restore();
+        }
+    };
+
+    function renderGraficoLinha() {
+        const alunosComAvals = alunos.filter(a => avaliacoes.some(av => av.alunoId === a.id));
+        const empty  = document.getElementById('emptyLinha');
+        const wrapper = document.getElementById('wrapperLinha');
+
+        if (!alunosComAvals.length) {
+            empty.style.display = 'block'; wrapper.style.display = 'none';
+            if (chartLinha) { chartLinha.destroy(); chartLinha = null; }
+            return;
+        }
+        empty.style.display = 'none'; wrapper.style.display = 'block';
+
+        const datas = [...new Set(avaliacoes.map(av => av.date))].sort();
+        const labels = datas.map(d => { const [y,m,dd] = d.split('-'); return `${dd}/${m}`; });
+
+        const alunoAvals = {};
+        avaliacoes.forEach(av => {
+            if (!alunoAvals[av.alunoId]) alunoAvals[av.alunoId] = [];
+            alunoAvals[av.alunoId].push(av);
+        });
+
+        const datasets = alunosComAvals.map((aluno, i) => {
+            const cor = PALETTE[i % PALETTE.length];
+            const avMap = {};
+            (alunoAvals[aluno.id] || []).forEach(av => { avMap[av.date] = av.desempenho; });
+            return {
+                label: aluno.nome,
+                data: datas.map(d => avMap[d] ?? null),
+                spanGaps: true,
+                borderColor: cor,
+                backgroundColor: cor + '22',
+                tension: 0.2,
+                pointBackgroundColor: datas.map(d => {
+                    const v = avMap[d];
+                    if (!v) return 'transparent';
+                    return v===1?'#991b1b':v===2?'#b45309':v===3?'#0369a1':'#166534';
+                }),
+                pointBorderColor: 'white',
+                pointRadius: datas.map(d => avMap[d] ? 5 : 0),
+                pointHoverRadius: 7,
+                borderWidth: 2,
+            };
+        });
+
+        const ctx = document.getElementById('graficoLinha').getContext('2d');
+        if (chartLinha) chartLinha.destroy();
+        chartLinha = new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        min: 0.5, max: 4.5,
+                        ticks: { stepSize:1, font:{size:10}, callback: v=>({1:'Inic.',2:'Bás.',3:'Prof.',4:'Avanç.'}[v]||'') },
+                        title: { display:true, text:'Desempenho', font:{size:10} }
+                    },
+                    x: { ticks: { maxRotation:40, font:{size:10} } }
+                },
+                plugins: {
+                    tooltip: { callbacks: { label: c => { const v=c.raw; if(v===null) return null; const d=DESEMPENHO[v]; return ` ${c.dataset.label}: ${d?.emoji} ${d?.texto||v}`; } } },
+                    legend: { labels: { font:{size:10}, boxWidth:10 } }
+                }
+            }
+        });
+    }
+
+    function renderGraficoQuadrante() {
+        const alunosComAvals = alunos.filter(a => avaliacoes.some(av => av.alunoId === a.id));
+        const empty   = document.getElementById('emptyQuadrante');
+        const wrapper  = document.getElementById('wrapperQuadrante');
+
+        if (!alunosComAvals.length) {
+            empty.style.display = 'block'; wrapper.style.display = 'none';
+            if (chartQuadrante) { chartQuadrante.destroy(); chartQuadrante = null; }
+            return;
+        }
+        empty.style.display = 'none'; wrapper.style.display = 'block';
+
+        const alunoAvals = {};
+        avaliacoes.forEach(av => {
+            if (!alunoAvals[av.alunoId]) alunoAvals[av.alunoId] = [];
+            alunoAvals[av.alunoId].push(av);
+        });
+
+        const datasets = alunosComAvals.map((aluno, i) => {
+            const cor = PALETTE[i % PALETTE.length];
+            const avs = alunoAvals[aluno.id] || [];
+            const avgD = avs.reduce((s, av) => s + av.desempenho, 0) / avs.length;
+            const avgE = avs.reduce((s, av) => s + av.evolucao,   0) / avs.length;
+            return {
+                label: aluno.nome,
+                data: [{ x: avgE, y: avgD }],
+                backgroundColor: cor,
+                borderColor: 'white',
+                borderWidth: 2,
+                pointRadius: 9,
+                pointHoverRadius: 11,
+            };
+        });
+
+        const ctx = document.getElementById('graficoQuadrante').getContext('2d');
+        if (chartQuadrante) chartQuadrante.destroy();
+        chartQuadrante = new Chart(ctx, {
+            type: 'scatter',
+            data: { datasets },
+            plugins: [quadrantPlugin],
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { right: 60 } },
+                scales: {
+                    x: {
+                        min: 0.5, max: 4.5,
+                        title: { display:true, text:'Evolução média', font:{size:10} },
+                        ticks: { stepSize:1, font:{size:10}, callback: v=>({1:'Regrediu',2:'Manteve',3:'Progrediu',4:'Evoluiu'}[v]||'') }
+                    },
+                    y: {
+                        min: 0.5, max: 4.5,
+                        title: { display:true, text:'Desempenho médio', font:{size:10} },
+                        ticks: { stepSize:1, font:{size:10}, callback: v=>({1:'Inic.',2:'Bás.',3:'Prof.',4:'Avanç.'}[v]||'') }
+                    }
+                },
+                plugins: {
+                    tooltip: { callbacks: { label: c => [`${c.dataset.label}`, `Desempenho: ${c.raw.y.toFixed(1)}`, `Evolução: ${c.raw.x.toFixed(1)}`] } },
+                    legend: { labels: { font:{size:10}, boxWidth:10 } }
+                }
+            }
+        });
+    }
+
+    function renderGraficos() { renderGraficoLinha(); renderGraficoQuadrante(); }
+
+    document.getElementById('avalDate').value = hoje();
+    carregar();
+    renderTurmas();
+    renderGraficos();
+</script>
+</body>
+</html>
