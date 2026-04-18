@@ -9,7 +9,19 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
-<div class="container">
+<div id="loginScreen" style="display:flex; justify-content:center; align-items:center; min-height:100vh; background:#f1f5f9; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999;">
+    <div class="card" style="text-align: center; max-width: 380px; width:90%; margin: auto; padding: 40px 20px;">
+        <h2><i class="fas fa-lock" style="color:#16a34a; margin-bottom:15px; font-size:2.5rem;"></i><br>Acesso Restrito</h2>
+        <p style="color: #64748b; margin-bottom: 25px; font-size:0.9rem;">Área exclusiva. Digite a senha para acessar o portal do professor.</p>
+        <div class="form-group" style="margin-bottom: 20px;">
+            <input type="password" id="senhaInput" placeholder="Senha de acesso" style="text-align: center; font-size:1.1rem; padding: 15px;">
+        </div>
+        <button class="btn btn-primary" id="btnEntrar" style="width: 100%; padding: 14px; font-size: 1.05rem;">Entrar</button>
+        <div id="loginErro" style="color: #ef4444; margin-top: 15px; display: none; font-size: 0.85rem; font-weight:600;">Senha incorreta. Tente novamente.</div>
+    </div>
+</div>
+
+<div class="container" id="appContent" style="display:none;">
 
     <!-- Rubrica -->
     <div class="card">

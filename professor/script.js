@@ -520,7 +520,52 @@ function renderGraficos() {
     renderGraficoQuadrante();
 }
 
-document.getElementById('avalDate').value = hoje();
-carregar();
-renderTurmas();
-renderGraficos();
+// Hash SHA-256 esperado (Padrão: "professor123")
+const EXPECTED_HASH = '4bb061ee48b0a5eb57da8e58f05ed8191ec4d51abfecae415bd3cd1c7f1f9ea8';
+
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function handleLogin() {
+    const input = document.getElementById('senhaInput').value;
+    const erro = document.getElementById('loginErro');
+    
+    if (!input) {
+        erro.textContent = 'Digite a senha.';
+        erro.style.display = 'block';
+        return;
+    }
+    
+    const hashed = await hashPassword(input);
+    
+    if (hashed === EXPECTED_HASH) {
+        sessionStorage.setItem('prof_auth', 'true');
+        initApp();
+    } else {
+        erro.textContent = 'Senha incorreta. Tente novamente.';
+        erro.style.display = 'block';
+    }
+}
+
+document.getElementById('btnEntrar').addEventListener('click', handleLogin);
+document.getElementById('senhaInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleLogin();
+});
+
+function initApp() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appContent').style.display = 'block';
+    document.getElementById('avalDate').value = hoje();
+    carregar();
+    renderTurmas();
+    renderGraficos();
+}
+
+// Verificação de autenticação inicial baseada na sessão
+if (sessionStorage.getItem('prof_auth') === 'true') {
+    initApp();
+}
