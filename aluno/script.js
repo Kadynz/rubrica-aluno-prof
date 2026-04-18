@@ -264,3 +264,28 @@ document.getElementById('btnCancelar').addEventListener('click', limparForm);
 // Initialization
 document.getElementById('lessonDate').value = hoje();
 carregar();
+
+// Theme Logic
+const currentTheme = localStorage.getItem('theme') || 'light';
+if (currentTheme === 'dark') document.body.setAttribute('data-theme', 'dark');
+
+const btnThemeToggle = document.getElementById('btnThemeToggle');
+if (btnThemeToggle) {
+    const updateThemeIcon = () => {
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        btnThemeToggle.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+    };
+    updateThemeIcon();
+
+    btnThemeToggle.addEventListener('click', () => {
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        const newTheme = isDark ? 'light' : 'dark';
+        if (newTheme === 'dark') {
+            document.body.setAttribute('data-theme', 'dark');
+        } else {
+            document.body.removeAttribute('data-theme');
+        }
+        localStorage.setItem('theme', newTheme);
+        updateThemeIcon();
+    });
+}
