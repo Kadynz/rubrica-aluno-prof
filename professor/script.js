@@ -740,28 +740,95 @@ document.getElementById('fileImport').addEventListener('change', e => {
     const reader = new FileReader();
     reader.onload = ev => {
         try {
-            const data = JSON.parse(ev.target.result);
-            // Basic validation check
-            if (Array.isArray(data.turmas) && Array.isArray(data.alunos) && Array.isArray(data.avaliacoes)) {
-                if (confirm('Atenção: A importação substituirá todos os dados atuais. Deseja continuar?')) {
-                    turmas = data.turmas;
-                    alunos = data.alunos;
-                    avaliacoes = data.avaliacoes;
-                    salvar(true);
-                    turmaAtiva = null;
-                    alunoAtivo = null;
-                    renderTurmas();
-                    ocultar('secaoAlunos');
-                    ocultar('secaoAvaliacao');
-                    ocultar('secaoHistorico');
-                    renderGraficos();
-                    alert('Dados importados com sucesso!');
+            if (file.name.toLowerCase().endsWith('.csv')) {
+                let text = ev.target.result;
+                if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+                
+                const parseCSV = (txt) => {
+                    let p = '', row = [''], ret = [row], i = 0, r = 0, s = !0, l;
+                    for (l of txt) {
+                        if ('"' === l) {
+                            if (s && l === p) row[i] += l;
+                            s = !s;
+                        } else if (';' === l && s) l = row[++i] = '';
+                        else if ('\n' === l && s) {
+                            if ('\r' === p) row[i] = row[i].slice(0, -1);
+                            row = ret[++r] = [l = '']; i = 0;
+                        } else row[i] += l;
+                        p = l;
+                    }
+                    if (ret[ret.length - 1].length === 1 && ret[ret.length - 1][0] === '') ret.pop();
+                    return ret;
+                };
+                
+                const rows = parseCSV(text);
+                if (rows.length < 2) throw new Error('CSV vazio ou inválido.');
+                const header = rows[0];
+                if (header[0] !== 'Turma' || header[1] !== 'Aluno') throw new Error('Cabeçalho CSV inválido.');
+                
+                if (confirm('Atenção: A importação do CSV substituirá todos os dados atuais. Deseja continuar?')) {
+                    const newTurmas = [];
+                    const newAlunos = [];
+                    const newAvaliacoes = [];
+                    const tMap = {};
+                    const aMap = {};
+                    let nextTId = Date.now();
+                    let nextAId = Date.now() + 10000;
+                    let nextAvId = Date.now() + 20000;
+                    
+                    for (let j = 1; j < rows.length; j++) {
+                        const row = rows[j];
+                        if (row.length < 7) continue;
+                        const tNome = row[0].trim();
+                        const aNome = row[1].trim();
+                        if (!tNome || !aNome) continue;
+                        
+                        let tId = tMap[tNome];
+                        if (!tId) { tId = nextTId++; tMap[tNome] = tId; newTurmas.push({ id: tId, nome: tNome }); }
+                        
+                        const aKey = tId + '_' + aNome;
+                        let aId = aMap[aKey];
+                        if (!aId) { aId = nextAId++; aMap[aKey] = aId; newAlunos.push({ id: aId, turmaId: tId, nome: aNome }); }
+                        
+                        newAvaliacoes.push({
+                            id: nextAvId++,
+                            alunoId: aId,
+                            date: row[2].trim(),
+                            lesson: row[3].trim(),
+                            desempenho: Number(row[4]) || 3,
+                            aula: Number(row[5]) || 3,
+                            evolucao: Number(row[6]) || 2
+                        });
+                    }
+                    
+                    turmas = newTurmas; alunos = newAlunos; avaliacoes = newAvaliacoes;
+                    salvar(true); turmaAtiva = null; alunoAtivo = null;
+                    renderTurmas(); ocultar('secaoAlunos'); ocultar('secaoAvaliacao'); ocultar('secaoHistorico');
+                    renderGraficos(); alert('CSV importado com sucesso!');
                 }
             } else {
-                alert('O arquivo JSON não possui o formato correto de backup.');
+                const data = JSON.parse(ev.target.result);
+                if (Array.isArray(data.turmas) && Array.isArray(data.alunos) && Array.isArray(data.avaliacoes)) {
+                    if (confirm('Atenção: A importação do JSON substituirá todos os dados atuais. Deseja continuar?')) {
+                        turmas = data.turmas;
+                        alunos = data.alunos;
+                        avaliacoes = data.avaliacoes;
+                        salvar(true);
+                        turmaAtiva = null;
+                        alunoAtivo = null;
+                        renderTurmas();
+                        ocultar('secaoAlunos');
+                        ocultar('secaoAvaliacao');
+                        ocultar('secaoHistorico');
+                        renderGraficos();
+                        alert('JSON importado com sucesso!');
+                    }
+                } else {
+                    alert('O arquivo JSON não possui o formato correto de backup.');
+                }
             }
         } catch (err) {
-            alert('Erro ao ler o arquivo JSON. Arquivo corrompido ou inválido.');
+            alert('Erro ao ler o arquivo. Arquivo corrompido ou inválido.');
         } finally {
             e.target.value = ''; // Reset input
         }
