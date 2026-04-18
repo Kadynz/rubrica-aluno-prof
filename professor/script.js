@@ -299,9 +299,20 @@ function excluirAvaliacao(id) {
 
 function renderHistorico() {
     const el = document.getElementById('listaHistorico');
-    const reg = avaliacoes.filter(av => av.alunoId === alunoAtivo);
+    let reg = avaliacoes.filter(av => av.alunoId === alunoAtivo);
+    
+    const filtroAula = document.getElementById('filtroAula').value.toLowerCase();
+    const filtroData = document.getElementById('filtroData').value;
+    
+    if (filtroAula) {
+        reg = reg.filter(av => av.lesson.toLowerCase().includes(filtroAula));
+    }
+    if (filtroData) {
+        reg = reg.filter(av => av.date === filtroData);
+    }
+    
     if (!reg.length) {
-        el.innerHTML = '<div class="aviso"><i class="fas fa-clipboard-list"></i><br>Nenhuma avaliação registrada.</div>';
+        el.innerHTML = '<div class="aviso"><i class="fas fa-clipboard-list"></i><br>Nenhuma avaliação encontrada.</div>';
         return;
     }
     
@@ -337,6 +348,10 @@ document.getElementById('listaHistorico').addEventListener('click', e => {
         excluirAvaliacao(Number(delBtn.dataset.id));
     }
 });
+
+// History Filters
+document.getElementById('filtroAula').addEventListener('input', renderHistorico);
+document.getElementById('filtroData').addEventListener('input', renderHistorico);
 
 let chartLinha = null;
 let chartQuadrante = null;
