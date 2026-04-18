@@ -607,12 +607,36 @@ document.getElementById('toggleSenhaBtn').addEventListener('click', function() {
 document.getElementById('btnExport').addEventListener('click', () => {
     const escopoSelect = document.getElementById('exportEscopo');
     escopoSelect.innerHTML = '<option value="all">Todos os dados (Backup Completo)</option>';
-    turmas.forEach(t => {
-        const opt = document.createElement('option');
-        opt.value = t.id;
-        opt.textContent = `Somente a turma: ${t.nome}`;
-        escopoSelect.appendChild(opt);
-    });
+    
+    if (turmas.length > 0) {
+        const optGroupT = document.createElement('optgroup');
+        optGroupT.label = 'Por Turma';
+        turmas.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = `turma_${t.id}`;
+            opt.textContent = `Turma: ${t.nome}`;
+            optGroupT.appendChild(opt);
+        });
+        escopoSelect.appendChild(optGroupT);
+    }
+    
+    if (alunos.length > 0) {
+        const optGroupA = document.createElement('optgroup');
+        optGroupA.label = 'Individual (Por Aluno)';
+        
+        const mapaTurmas = {};
+        turmas.forEach(t => mapaTurmas[t.id] = t.nome);
+        
+        alunos.forEach(a => {
+            const tNome = mapaTurmas[a.turmaId] || '?';
+            const opt = document.createElement('option');
+            opt.value = `aluno_${a.id}`;
+            opt.textContent = `Aluno: ${a.nome} (${tNome})`;
+            optGroupA.appendChild(opt);
+        });
+        escopoSelect.appendChild(optGroupA);
+    }
+    
     document.getElementById('modalExport').style.display = 'flex';
 });
 
@@ -629,11 +653,19 @@ document.getElementById('btnConfirmExport').addEventListener('click', () => {
     let expAvaliacoes = avaliacoes;
     
     if (escopo !== 'all') {
-        const tId = Number(escopo);
-        expTurmas = turmas.filter(t => t.id === tId);
-        expAlunos = alunos.filter(a => a.turmaId === tId);
-        const alunoIds = new Set(expAlunos.map(a => a.id));
-        expAvaliacoes = avaliacoes.filter(av => alunoIds.has(av.alunoId));
+        if (escopo.startsWith('turma_')) {
+            const tId = Number(escopo.split('_')[1]);
+            expTurmas = turmas.filter(t => t.id === tId);
+            expAlunos = alunos.filter(a => a.turmaId === tId);
+            const alunoIds = new Set(expAlunos.map(a => a.id));
+            expAvaliacoes = avaliacoes.filter(av => alunoIds.has(av.alunoId));
+        } else if (escopo.startsWith('aluno_')) {
+            const aId = Number(escopo.split('_')[1]);
+            expAlunos = alunos.filter(a => a.id === aId);
+            const tId = expAlunos[0] ? expAlunos[0].turmaId : null;
+            expTurmas = turmas.filter(t => t.id === tId);
+            expAvaliacoes = avaliacoes.filter(av => av.alunoId === aId);
+        }
     }
     
     if (formato === 'json') {
