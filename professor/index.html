@@ -32,13 +32,13 @@
     <!-- Rubrica -->
     <div class="card">
         <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-            <div>
+            <div style="display:flex; align-items:center; gap:12px; min-width:0;">
                 <i class="fas fa-chalkboard-user"></i>
-                <h2>Rubrica do Professor &nbsp;<span style="font-size:0.88rem;font-weight:400;">Avaliação de alunos</span></h2>
+                <h2 style="font-size:1rem; white-space:nowrap;">Rubrica do Professor</h2>
             </div>
             <div class="acoes-dados" style="display:flex; gap:8px;">
-                <button id="btnExport" class="btn btn-sm" style="background:var(--bg-badge); color:var(--text-main); border:1px solid var(--input-border); padding: 6px 10px; font-size: 0.85rem; min-width: 105px; display:inline-flex; align-items:center; justify-content:center; gap:6px;"><i class="fas fa-download fa-fw"></i> Exportar</button>
-                <button id="btnImport" class="btn btn-sm" style="background:var(--bg-badge); color:var(--text-main); border:1px solid var(--input-border); padding: 6px 10px; font-size: 0.85rem; min-width: 105px; display:inline-flex; align-items:center; justify-content:center; gap:6px;"><i class="fas fa-upload fa-fw"></i> Importar</button>
+                <button id="btnExport" class="btn btn-sm" style="background:transparent; color:var(--text-main); border:none; padding: 6px 10px; font-size: 0.85rem; min-width: 105px; display:inline-flex; align-items:center; justify-content:center; gap:10px;"><i class="fas fa-download fa-fw"></i> Exportar</button>
+                <button id="btnImport" class="btn btn-sm" style="background:transparent; color:var(--text-main); border:none; padding: 6px 10px; font-size: 0.85rem; min-width: 105px; display:inline-flex; align-items:center; justify-content:center; gap:10px;"><i class="fas fa-upload fa-fw"></i> Importar</button>
                 <input type="file" id="fileImport" accept=".json,.csv" style="display:none;">
             </div>
         </div>
