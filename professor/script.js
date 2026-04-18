@@ -520,8 +520,8 @@ function renderGraficos() {
     renderGraficoQuadrante();
 }
 
-// Hash SHA-256 esperado (Padrão: "professor123")
-const EXPECTED_HASH = '4bb061ee48b0a5eb57da8e58f05ed8191ec4d51abfecae415bd3cd1c7f1f9ea8';
+// Hash SHA-256 da senha de acesso
+const EXPECTED_HASH = '811f0a6ebc4535d48e341fe4ab5233313bca2e345e037a956b26a2d9a144cc2d';
 
 async function hashPassword(password) {
     const encoder = new TextEncoder();
