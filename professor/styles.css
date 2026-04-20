@@ -30,8 +30,7 @@
     
     --evo1-bg: #fce7f3; --evo1-text: #9d174d;
     --evo2-bg: #f1f5f9; --evo2-text: #475569;
-    
-    --btn-edit-bg: #eff6ff; --btn-edit-text: #3b82f6;
+
     --btn-del-bg: #fff1f2; --btn-del-text: #ef4444;
 }
 
@@ -65,8 +64,7 @@
     
     --evo1-bg: #831843; --evo1-text: #f9a8d4;
     --evo2-bg: #334155; --evo2-text: #cbd5e1;
-    
-    --btn-edit-bg: #1e3a8a; --btn-edit-text: #93c5fd;
+
     --btn-del-bg: #7f1d1d; --btn-del-text: #fca5a5;
 }
 
@@ -166,10 +164,13 @@ input, select {
     border: 1px solid var(--input-border);
     border-radius: 24px;
     background: var(--input-bg);
+    color: var(--text-main);
     font-family: inherit;
     transition: 0.2s;
     appearance: auto;
 }
+
+::placeholder { color: var(--text-muted); opacity: 1; }
 
 input:focus, select:focus {
     outline: none;

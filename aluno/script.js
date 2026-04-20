@@ -266,8 +266,15 @@ document.getElementById('lessonDate').value = hoje();
 carregar();
 
 // Theme Logic
+function aplicarTemaAosGraficos() {
+    const isDark = document.body.getAttribute('data-theme') === 'dark';
+    Chart.defaults.color = isDark ? '#f8fafc' : '#0f172a';
+    Chart.defaults.borderColor = isDark ? 'rgba(148,163,184,0.25)' : 'rgba(100,116,139,0.15)';
+}
+
 const currentTheme = localStorage.getItem('theme') || 'light';
 if (currentTheme === 'dark') document.body.setAttribute('data-theme', 'dark');
+aplicarTemaAosGraficos();
 
 const btnThemeToggle = document.getElementById('btnThemeToggle');
 if (btnThemeToggle) {
@@ -279,13 +286,11 @@ if (btnThemeToggle) {
 
     btnThemeToggle.addEventListener('click', () => {
         const isDark = document.body.getAttribute('data-theme') === 'dark';
-        const newTheme = isDark ? 'light' : 'dark';
-        if (newTheme === 'dark') {
-            document.body.setAttribute('data-theme', 'dark');
-        } else {
-            document.body.removeAttribute('data-theme');
-        }
-        localStorage.setItem('theme', newTheme);
+        if (isDark) document.body.removeAttribute('data-theme');
+        else document.body.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', isDark ? 'light' : 'dark');
         updateThemeIcon();
+        aplicarTemaAosGraficos();
+        atualizarEstatisticas();
     });
 }

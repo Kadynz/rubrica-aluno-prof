@@ -432,7 +432,7 @@ function renderGraficoLinha() {
         const avMap = {};
         (alunoAvals[aluno.id] || []).forEach(av => { avMap[av.date] = av.desempenho; });
         return {
-            label: escapeHtml(aluno.nome), // Prevent XSS in Chart tooltip
+            label: aluno.nome,
             data: datas.map(d => avMap[d] ?? null),
             spanGaps: true,
             borderColor: cor,
@@ -500,7 +500,7 @@ function renderGraficoQuadrante() {
         const avgD = avs.reduce((s, av) => s + av.desempenho, 0) / avs.length;
         const avgE = avs.reduce((s, av) => s + av.evolucao, 0) / avs.length;
         return {
-            label: escapeHtml(aluno.nome), // Prevent XSS in Chart tooltip
+            label: aluno.nome,
             data: [{ x: avgE, y: avgD }],
             backgroundColor: cor,
             borderColor: 'white',
@@ -545,47 +545,112 @@ function renderGraficos() {
     renderGraficoQuadrante();
 }
 
-// Hashes SHA-256 de credenciais de acesso
-const EXPECTED_USER_HASH = '5c62dbb490ed71afc967ac2b74283691217656988d9d291cdc18d13e0b03aaec';
-const EXPECTED_PASS_HASH = '811f0a6ebc4535d48e341fe4ab5233313bca2e345e037a956b26a2d9a144cc2d';
+// Autenticação local (sem backend): credenciais salvas em localStorage com SHA-256 + salt.
+const K_CREDS = 'prof_creds_v1';
+const K_SESSION = 'prof_auth';
 
-async function hashText(text) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(text);
+async function hashText(text, salt = '') {
+    const data = new TextEncoder().encode(salt + text);
     const hash = await crypto.subtle.digest('SHA-256', data);
     return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function handleLogin() {
+function gerarSalt() {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function lerCreds() {
+    try {
+        const raw = localStorage.getItem(K_CREDS);
+        if (!raw) return null;
+        const c = JSON.parse(raw);
+        return (c && c.userHash && c.passHash && c.salt) ? c : null;
+    } catch { return null; }
+}
+
+function configurarTelaAuth(modo) {
+    const title = document.getElementById('authTitle');
+    const subtitle = document.getElementById('authSubtitle');
+    const warning = document.getElementById('authWarning');
+    const btn = document.getElementById('btnEntrar');
+    const reset = document.getElementById('btnResetAuth');
+    const userInp = document.getElementById('userInput');
+    const passInp = document.getElementById('senhaInput');
+    const erro = document.getElementById('loginErro');
+
+    erro.style.display = 'none';
+    userInp.value = '';
+    passInp.value = '';
+
+    if (modo === 'signup') {
+        title.innerHTML = '<i class="fas fa-user-plus" style="color:var(--icon-color); margin-bottom:15px; font-size:2.5rem;"></i><br>Criar acesso';
+        subtitle.textContent = 'Escolha um usuário e senha. Eles ficam salvos só neste navegador.';
+        warning.style.display = 'block';
+        btn.textContent = 'Criar e entrar';
+        reset.style.display = 'none';
+        passInp.setAttribute('autocomplete', 'new-password');
+    } else {
+        title.innerHTML = '<i class="fas fa-lock" style="color:var(--icon-color); margin-bottom:15px; font-size:2.5rem;"></i><br>Acesso do Professor';
+        subtitle.textContent = 'Digite seu usuário e senha para entrar.';
+        warning.style.display = 'none';
+        btn.textContent = 'Entrar';
+        reset.style.display = 'inline-block';
+        passInp.setAttribute('autocomplete', 'current-password');
+    }
+    setTimeout(() => userInp.focus(), 50);
+}
+
+async function handleAuth() {
     const userVal = document.getElementById('userInput').value.trim();
     const passVal = document.getElementById('senhaInput').value;
     const erro = document.getElementById('loginErro');
-    
-    if (!userVal || !passVal) {
-        erro.textContent = 'Preencha usuário e senha.';
-        erro.style.display = 'block';
+    const creds = lerCreds();
+    const mostrarErro = msg => { erro.textContent = msg; erro.style.display = 'block'; };
+
+    if (!userVal || !passVal) { mostrarErro('Preencha usuário e senha.'); return; }
+
+    if (!creds) {
+        if (userVal.length < 3) { mostrarErro('Usuário deve ter pelo menos 3 caracteres.'); return; }
+        if (passVal.length < 6) { mostrarErro('Senha deve ter pelo menos 6 caracteres.'); return; }
+        const salt = gerarSalt();
+        const userHash = await hashText(userVal, salt);
+        const passHash = await hashText(passVal, salt);
+        localStorage.setItem(K_CREDS, JSON.stringify({ userHash, passHash, salt }));
+        sessionStorage.setItem(K_SESSION, 'true');
+        initApp();
         return;
     }
-    
-    const hashedUser = await hashText(userVal);
-    const hashedPass = await hashText(passVal);
-    
-    if (hashedUser === EXPECTED_USER_HASH && hashedPass === EXPECTED_PASS_HASH) {
-        sessionStorage.setItem('prof_auth', 'true');
+
+    const userHash = await hashText(userVal, creds.salt);
+    const passHash = await hashText(passVal, creds.salt);
+    if (userHash === creds.userHash && passHash === creds.passHash) {
+        sessionStorage.setItem(K_SESSION, 'true');
         initApp();
     } else {
-        erro.textContent = 'Usuário ou senha incorretos.';
-        erro.style.display = 'block';
+        mostrarErro('Usuário ou senha incorretos.');
     }
 }
 
-document.getElementById('btnEntrar').addEventListener('click', handleLogin);
+function resetarAcesso() {
+    if (!confirm('Isso apaga credenciais, turmas, alunos e avaliações deste navegador. Continuar?')) return;
+    if (!confirm('Tem CERTEZA? Não há como recuperar os dados depois.')) return;
+    localStorage.removeItem(K_CREDS);
+    localStorage.removeItem(K_TURMAS);
+    localStorage.removeItem(K_ALUNOS);
+    localStorage.removeItem(K_AVALS);
+    sessionStorage.removeItem(K_SESSION);
+    configurarTelaAuth('signup');
+}
+
+document.getElementById('btnEntrar').addEventListener('click', handleAuth);
 document.getElementById('senhaInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') handleLogin();
+    if (e.key === 'Enter') handleAuth();
 });
 document.getElementById('userInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('senhaInput').focus();
 });
+document.getElementById('btnResetAuth').addEventListener('click', resetarAcesso);
 
 document.getElementById('toggleSenhaBtn').addEventListener('click', function() {
     const senhaInput = document.getElementById('senhaInput');
@@ -845,14 +910,23 @@ function initApp() {
     renderGraficos();
 }
 
-// Verificação de autenticação inicial baseada na sessão
-if (sessionStorage.getItem('prof_auth') === 'true') {
+// Estado inicial: sessão ativa → app; senão, cadastro (1ª vez) ou login.
+if (sessionStorage.getItem(K_SESSION) === 'true' && lerCreds()) {
     initApp();
+} else {
+    configurarTelaAuth(lerCreds() ? 'login' : 'signup');
 }
 
 // Theme Logic
+function aplicarTemaAosGraficos() {
+    const isDark = document.body.getAttribute('data-theme') === 'dark';
+    Chart.defaults.color = isDark ? '#f8fafc' : '#0f172a';
+    Chart.defaults.borderColor = isDark ? 'rgba(148,163,184,0.25)' : 'rgba(100,116,139,0.15)';
+}
+
 const currentTheme = localStorage.getItem('theme') || 'light';
 if (currentTheme === 'dark') document.body.setAttribute('data-theme', 'dark');
+aplicarTemaAosGraficos();
 
 const btnThemeToggle = document.getElementById('btnThemeToggle');
 if (btnThemeToggle) {
@@ -864,13 +938,11 @@ if (btnThemeToggle) {
 
     btnThemeToggle.addEventListener('click', () => {
         const isDark = document.body.getAttribute('data-theme') === 'dark';
-        const newTheme = isDark ? 'light' : 'dark';
-        if (newTheme === 'dark') {
-            document.body.setAttribute('data-theme', 'dark');
-        } else {
-            document.body.removeAttribute('data-theme');
-        }
-        localStorage.setItem('theme', newTheme);
+        if (isDark) document.body.removeAttribute('data-theme');
+        else document.body.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', isDark ? 'light' : 'dark');
         updateThemeIcon();
+        aplicarTemaAosGraficos();
+        if (sessionStorage.getItem(K_SESSION) === 'true') renderGraficos();
     });
 }

@@ -9,21 +9,25 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
-<div id="loginScreen" style="display:flex; justify-content:center; align-items:center; min-height:100vh; background:#f1f5f9; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999;">
+<div id="loginScreen" style="display:flex; justify-content:center; align-items:center; min-height:100vh; background:var(--bg-body); position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999;">
     <div class="card" style="text-align: center; max-width: 380px; width:90%; margin: auto; padding: 40px 20px;">
-        <h2><i class="fas fa-lock" style="color:#16a34a; margin-bottom:15px; font-size:2.5rem;"></i><br>Acesso Restrito</h2>
-        <p style="color: #64748b; margin-bottom: 25px; font-size:0.9rem;">Área exclusiva. Digite seu usuário e senha para acessar o portal.</p>
+        <h2 id="authTitle"><i id="authIcon" class="fas fa-lock" style="color:var(--icon-color); margin-bottom:15px; font-size:2.5rem;"></i><br>Acesso Restrito</h2>
+        <p id="authSubtitle" style="color: var(--text-muted); margin-bottom: 25px; font-size:0.9rem;">Área exclusiva. Digite seu usuário e senha para acessar o portal.</p>
+        <div id="authWarning" style="display:none; background: var(--btn-del-bg); color: var(--btn-del-text); border: 1px solid var(--btn-del-text); border-radius: 8px; padding: 10px 12px; margin-bottom: 18px; font-size: 0.78rem; font-weight: 600; text-align: left; line-height: 1.4;">
+            <i class="fas fa-triangle-exclamation"></i> <strong>ATENÇÃO:</strong> não há como recuperar usuário/senha. Se esquecer, perde tudo. Guarde em um lugar seguro.
+        </div>
         <div class="form-group" style="margin-bottom: 15px;">
-            <input type="text" id="userInput" placeholder="Usuário" aria-label="Usuário" autocomplete="username" style="text-align: center; font-size:1.1rem; padding: 15px; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px;">
+            <input type="text" id="userInput" placeholder="Usuário" aria-label="Usuário" autocomplete="username" style="text-align: center; font-size:1.1rem; padding: 15px; width: 100%; box-sizing: border-box; border: 1px solid var(--input-border); border-radius: 8px; background: var(--input-bg); color: var(--text-main);">
         </div>
         <div class="form-group" style="margin-bottom: 20px; position: relative;">
-            <input type="password" id="senhaInput" placeholder="Senha de acesso" aria-label="Senha de acesso" autocomplete="current-password" style="text-align: center; font-size:1.1rem; padding: 15px; padding-right: 45px; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 8px;">
-            <button type="button" id="toggleSenhaBtn" aria-label="Mostrar senha" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748b; font-size: 1.1rem;">
+            <input type="password" id="senhaInput" placeholder="Senha" aria-label="Senha" autocomplete="current-password" style="text-align: center; font-size:1.1rem; padding: 15px; padding-right: 45px; width: 100%; box-sizing: border-box; border: 1px solid var(--input-border); border-radius: 8px; background: var(--input-bg); color: var(--text-main);">
+            <button type="button" id="toggleSenhaBtn" aria-label="Mostrar senha" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 1.1rem;">
                 <i class="fas fa-eye"></i>
             </button>
         </div>
         <button class="btn btn-primary" id="btnEntrar" style="width: 100%; padding: 14px; font-size: 1.05rem;">Entrar</button>
-        <div id="loginErro" style="color: #ef4444; margin-top: 15px; display: none; font-size: 0.85rem; font-weight:600;">Senha incorreta. Tente novamente.</div>
+        <div id="loginErro" style="color: var(--btn-del-text); margin-top: 15px; display: none; font-size: 0.85rem; font-weight:600;"></div>
+        <button type="button" id="btnResetAuth" style="display:none; margin-top: 18px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.78rem; text-decoration: underline; font-family: inherit;">Esqueci a senha — apagar tudo e recomeçar</button>
     </div>
 </div>
 
@@ -63,8 +67,8 @@
 
             <div class="rubrica-section-label" style="margin-top:8px;">Evolução do aluno</div>
             <div class="rubrica-grid" style="margin-bottom:0;">
-                <div class="nivel-item" style="background:#fce7f3;color:#9d174d;">⬇️ Regrediu</div>
-                <div class="nivel-item" style="background:#f1f5f9;color:#475569;">➡️ Manteve</div>
+                <div class="nivel-item chip-evo-1">⬇️ Regrediu</div>
+                <div class="nivel-item chip-evo-2">➡️ Manteve</div>
                 <div class="nivel-item nivel-2">⬆️ Progrediu</div>
                 <div class="nivel-item nivel-4">🚀 Evoluiu muito</div>
             </div>
@@ -166,8 +170,8 @@
             <h2>Histórico — <span id="nomeAlunoHist" style="font-weight:400;font-size:1rem;"></span></h2>
         </div>
         <div class="filtros-historico" style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <input type="text" id="filtroAula" placeholder="Filtrar por aula (nome)" aria-label="Filtrar por aula" style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-            <input type="date" id="filtroData" aria-label="Filtrar por data" style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+            <input type="text" id="filtroAula" placeholder="Filtrar por aula (nome)" aria-label="Filtrar por aula" style="flex: 1;">
+            <input type="date" id="filtroData" aria-label="Filtrar por data" style="flex: 1;">
         </div>
         <div id="listaHistorico">
             <div class="aviso" aria-live="polite"><i class="fas fa-clipboard-list"></i><br>Nenhuma avaliação registrada.</div>
@@ -213,20 +217,20 @@
             </div>
             <div class="form-group" style="margin-top:15px;">
                 <label for="exportEscopo">O que exportar?</label>
-                <select id="exportEscopo" class="select-form" aria-label="Escopo da exportação" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; margin-top: 5px;">
+                <select id="exportEscopo" class="select-form" aria-label="Escopo da exportação" style="margin-top: 5px;">
                     <option value="all">Todos os dados (Backup Completo)</option>
                 </select>
             </div>
             <div class="form-group" style="margin-top:15px;">
                 <label for="exportFormato">Formato</label>
-                <select id="exportFormato" class="select-form" aria-label="Formato do arquivo" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; margin-top: 5px;">
+                <select id="exportFormato" class="select-form" aria-label="Formato do arquivo" style="margin-top: 5px;">
                     <option value="json">JSON (Para restauração/backup)</option>
                     <option value="csv">CSV (Para análise no Excel)</option>
                 </select>
             </div>
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button id="btnConfirmExport" class="btn btn-primary" style="flex:1;"><i class="fas fa-check"></i> Exportar</button>
-                <button id="btnCancelExport" class="btn btn-sm" style="flex:1; background:#f1f5f9; color:#475569; border: 1px solid #cbd5e1;"><i class="fas fa-times"></i> Cancelar</button>
+                <button id="btnCancelExport" class="btn btn-secondary btn-sm" style="flex:1;"><i class="fas fa-times"></i> Cancelar</button>
             </div>
         </div>
     </div>
