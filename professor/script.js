@@ -71,6 +71,268 @@ function salvar(comGraficos = false) {
     if (comGraficos) renderGraficos();
 }
 
+// ============================================================
+// === FOTOS DOS ALUNOS (opcional, client-side, localStorage) ===
+// ============================================================
+const K_FOTO_CONSENT = 'prof_foto_consent_v1';
+const FOTO_MAX_INPUT_BYTES = 10 * 1024 * 1024;
+const FOTO_MIN_DIM = 100;
+const FOTO_OUTPUT_DIM = 256;
+const FOTO_QUALIDADES = [0.75, 0.6, 0.5];
+const FOTO_ALVO_BYTES = 100 * 1024;
+const FOTO_STORAGE_WARN_BYTES = 4 * 1024 * 1024;
+
+function iniciaisDoNome(nome) {
+    if (!nome) return '?';
+    const partes = nome.trim().split(/\s+/).filter(Boolean);
+    if (!partes.length) return '?';
+    const p1 = partes[0][0] || '';
+    const p2 = partes.length > 1 ? partes[partes.length - 1][0] : '';
+    return (p1 + p2).toUpperCase() || '?';
+}
+
+function corDoAluno(id) {
+    const hue = Math.abs(Number(id) | 0) % 360;
+    return `hsl(${hue}, 55%, 45%)`;
+}
+
+function renderAvatar(aluno) {
+    const alt = escapeHtml(aluno.nome || 'aluno');
+    const iniciais = escapeHtml(iniciaisDoNome(aluno.nome));
+    if (aluno.foto && typeof aluno.foto === 'string' && aluno.foto.startsWith('data:image/')) {
+        return `<div class="aluno-avatar aluno-avatar-com-foto" data-avatar-id="${aluno.id}" role="button" tabindex="0" aria-label="Alterar ou remover foto de ${alt}" title="Alterar ou remover foto">
+            <img src="${aluno.foto}" alt="Foto de ${alt}" loading="lazy">
+            <span class="aluno-avatar-overlay"><i class="fas fa-camera"></i></span>
+        </div>`;
+    }
+    return `<div class="aluno-avatar aluno-avatar-sem-foto" data-avatar-id="${aluno.id}" role="button" tabindex="0" aria-label="Adicionar foto de ${alt}" title="Adicionar foto" style="background:${corDoAluno(aluno.id)};">
+        <span class="aluno-avatar-iniciais">${iniciais}</span>
+        <span class="aluno-avatar-overlay"><i class="fas fa-camera"></i></span>
+    </div>`;
+}
+
+function jaConsentiuFoto() {
+    try {
+        const raw = localStorage.getItem(K_FOTO_CONSENT);
+        const p = raw ? JSON.parse(raw) : null;
+        return !!(p && p.aceito);
+    } catch { return false; }
+}
+
+function registrarConsentimentoFoto() {
+    localStorage.setItem(K_FOTO_CONSENT, JSON.stringify({ aceito: true, data: new Date().toISOString() }));
+}
+
+function mostrarModalConsentimento({ apenasLeitura = false } = {}) {
+    return new Promise(resolve => {
+        const dlg = document.getElementById('modalFotoConsent');
+        const btnOk = document.getElementById('btnFotoConsentOk');
+        const btnCancel = document.getElementById('btnFotoConsentCancel');
+        const chk = document.getElementById('chkFotoConsent');
+        const chkWrap = document.getElementById('wrapChkFotoConsent');
+
+        chk.checked = false;
+        if (apenasLeitura) {
+            chkWrap.style.display = 'none';
+            btnOk.disabled = false;
+            btnOk.textContent = 'Fechar';
+            btnCancel.style.display = 'none';
+        } else {
+            chkWrap.style.display = '';
+            btnOk.disabled = true;
+            btnOk.textContent = 'Aceitar e selecionar foto';
+            btnCancel.style.display = '';
+        }
+
+        let resultado = false;
+        const onChk = () => { if (!apenasLeitura) btnOk.disabled = !chk.checked; };
+        const onOk = () => { resultado = !apenasLeitura; dlg.close(); };
+        const onCancel = () => { resultado = false; dlg.close(); };
+        const onClose = () => {
+            chk.removeEventListener('change', onChk);
+            btnOk.removeEventListener('click', onOk);
+            btnCancel.removeEventListener('click', onCancel);
+            dlg.removeEventListener('close', onClose);
+            resolve(resultado);
+        };
+
+        chk.addEventListener('change', onChk);
+        btnOk.addEventListener('click', onOk);
+        btnCancel.addEventListener('click', onCancel);
+        dlg.addEventListener('close', onClose);
+        dlg.showModal();
+    });
+}
+
+function mostrarMenuFotoExistente() {
+    return new Promise(resolve => {
+        const dlg = document.getElementById('modalFotoAcoes');
+        const btnTrocar = document.getElementById('btnFotoTrocar');
+        const btnRemover = document.getElementById('btnFotoRemover');
+        const btnCancel = document.getElementById('btnFotoAcoesCancel');
+
+        let acao = null;
+        const onTrocar = () => { acao = 'trocar'; dlg.close(); };
+        const onRemover = () => { acao = 'remover'; dlg.close(); };
+        const onCancel = () => { acao = null; dlg.close(); };
+        const onClose = () => {
+            btnTrocar.removeEventListener('click', onTrocar);
+            btnRemover.removeEventListener('click', onRemover);
+            btnCancel.removeEventListener('click', onCancel);
+            dlg.removeEventListener('close', onClose);
+            resolve(acao);
+        };
+
+        btnTrocar.addEventListener('click', onTrocar);
+        btnRemover.addEventListener('click', onRemover);
+        btnCancel.addEventListener('click', onCancel);
+        dlg.addEventListener('close', onClose);
+        dlg.showModal();
+    });
+}
+
+async function processarImagem(file) {
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+        throw new Error('Tipo de arquivo não suportado. Use JPG, PNG ou WebP.');
+    }
+    if (file.size > FOTO_MAX_INPUT_BYTES) {
+        throw new Error(`Imagem muito grande (${(file.size / 1024 / 1024).toFixed(1)} MB). Máximo permitido: 10 MB.`);
+    }
+    const blobUrl = URL.createObjectURL(file);
+    try {
+        const img = await new Promise((resolve, reject) => {
+            const i = new Image();
+            i.onload = () => resolve(i);
+            i.onerror = () => reject(new Error('Imagem inválida ou corrompida.'));
+            i.src = blobUrl;
+        });
+        if (img.naturalWidth < FOTO_MIN_DIM || img.naturalHeight < FOTO_MIN_DIM) {
+            throw new Error(`Imagem muito pequena (${img.naturalWidth}×${img.naturalHeight}). Mínimo: ${FOTO_MIN_DIM}×${FOTO_MIN_DIM} px.`);
+        }
+        const size = Math.min(img.naturalWidth, img.naturalHeight);
+        const sx = (img.naturalWidth - size) / 2;
+        const sy = (img.naturalHeight - size) / 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = FOTO_OUTPUT_DIM;
+        canvas.height = FOTO_OUTPUT_DIM;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, FOTO_OUTPUT_DIM, FOTO_OUTPUT_DIM);
+        let dataUrl = canvas.toDataURL('image/jpeg', FOTO_QUALIDADES[0]);
+        for (let i = 1; i < FOTO_QUALIDADES.length; i++) {
+            if (dataUrl.length <= FOTO_ALVO_BYTES * 1.4) break;
+            dataUrl = canvas.toDataURL('image/jpeg', FOTO_QUALIDADES[i]);
+        }
+        return dataUrl;
+    } finally {
+        URL.revokeObjectURL(blobUrl);
+    }
+}
+
+function estimarStorageBytes() {
+    let total = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        const v = localStorage.getItem(k);
+        total += ((k && k.length) || 0) + ((v && v.length) || 0);
+    }
+    return total * 2;
+}
+
+function setFotoAluno(alunoId, fotoDataUrl) {
+    const idx = alunos.findIndex(a => a.id === alunoId);
+    if (idx === -1) return false;
+    const previa = alunos[idx].foto;
+    if (fotoDataUrl === null) {
+        delete alunos[idx].foto;
+    } else {
+        alunos[idx] = { ...alunos[idx], foto: fotoDataUrl };
+    }
+    try {
+        localStorage.setItem(K_ALUNOS, JSON.stringify(alunos));
+    } catch (err) {
+        if (previa !== undefined) alunos[idx].foto = previa;
+        else delete alunos[idx].foto;
+        if (err && err.name === 'QuotaExceededError') {
+            alert('Armazenamento do navegador cheio. Exporte um backup JSON, apague dados antigos e tente novamente.');
+        } else {
+            alert('Não foi possível salvar a foto: ' + (err && err.message ? err.message : err));
+        }
+        return false;
+    }
+    if (estimarStorageBytes() > FOTO_STORAGE_WARN_BYTES) {
+        console.warn('[Fotos] Uso de storage acima de 4 MB — considere exportar backup.');
+    }
+    return true;
+}
+
+function selecionarArquivoFoto() {
+    return new Promise(resolve => {
+        const inp = document.getElementById('fileFoto');
+        let finalizado = false;
+        const finish = (file) => {
+            if (finalizado) return;
+            finalizado = true;
+            inp.removeEventListener('change', onChange);
+            inp.removeEventListener('cancel', onCancel);
+            inp.value = '';
+            resolve(file);
+        };
+        const onChange = () => finish(inp.files && inp.files[0] ? inp.files[0] : null);
+        const onCancel = () => finish(null);
+        inp.addEventListener('change', onChange);
+        inp.addEventListener('cancel', onCancel);
+        inp.click();
+    });
+}
+
+async function aoClicarAvatar(alunoId) {
+    const aluno = alunos.find(a => a.id === alunoId);
+    if (!aluno) return;
+
+    if (aluno.foto) {
+        const acao = await mostrarMenuFotoExistente();
+        if (acao === 'remover') {
+            if (setFotoAluno(alunoId, null)) renderAlunos();
+            return;
+        }
+        if (acao !== 'trocar') return;
+    }
+
+    if (!jaConsentiuFoto()) {
+        const ok = await mostrarModalConsentimento();
+        if (!ok) return;
+        registrarConsentimentoFoto();
+    }
+
+    const file = await selecionarArquivoFoto();
+    if (!file) return;
+    try {
+        const dataUrl = await processarImagem(file);
+        if (setFotoAluno(alunoId, dataUrl)) renderAlunos();
+    } catch (err) {
+        alert(err && err.message ? err.message : 'Falha ao processar a imagem.');
+    }
+}
+
+function inserirBannerFotoConsent() {
+    const secao = document.getElementById('secaoAlunos');
+    if (!secao || document.getElementById('bannerFotoConsent')) return;
+    const header = secao.querySelector('.card-header');
+    if (!header) return;
+    const banner = document.createElement('div');
+    banner.id = 'bannerFotoConsent';
+    banner.className = 'banner-foto-consent';
+    banner.innerHTML = `<i class="fas fa-circle-info"></i>
+        <span>Fotos cadastradas são de <strong>responsabilidade legal do educador</strong> (LGPD / direito de imagem).</span>
+        <button type="button" id="btnVerTermosFoto">Ver termos</button>`;
+    header.insertAdjacentElement('afterend', banner);
+    document.getElementById('btnVerTermosFoto').addEventListener('click', () => {
+        mostrarModalConsentimento({ apenasLeitura: true });
+    });
+}
+
 function adicionarTurma() {
     const inp = document.getElementById('novaTurma');
     const nome = inp.value.trim();
@@ -219,7 +481,7 @@ function renderAlunos() {
         const qtd = countMap[a.id] || 0;
         const cls = a.id === alunoAtivo ? ' ativo' : '';
         return `<div class="aluno-item${cls}" data-id="${a.id}">
-            <i class="fas fa-user-graduate" style="color:#3b82f6;"></i>
+            ${renderAvatar(a)}
             <span class="item-nome">${escapeHtml(a.nome)}</span>
             <span class="item-badge">${qtd} aval.</span>
             <button class="item-del" data-id="${a.id}" title="Excluir"><i class="fas fa-trash-alt"></i></button>
@@ -229,13 +491,26 @@ function renderAlunos() {
 
 // Event Delegation for Alunos
 document.getElementById('listaAlunos').addEventListener('click', e => {
+    const avatarBtn = e.target.closest('.aluno-avatar');
     const delBtn = e.target.closest('.item-del');
     const item = e.target.closest('.aluno-item');
-    if (delBtn) {
+    if (avatarBtn) {
+        e.stopPropagation();
+        aoClicarAvatar(Number(avatarBtn.dataset.avatarId));
+    } else if (delBtn) {
         e.stopPropagation();
         excluirAluno(Number(delBtn.dataset.id));
     } else if (item) {
         selecionarAluno(Number(item.dataset.id));
+    }
+});
+
+document.getElementById('listaAlunos').addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const avatarBtn = e.target.closest('.aluno-avatar');
+    if (avatarBtn) {
+        e.preventDefault();
+        aoClicarAvatar(Number(avatarBtn.dataset.avatarId));
     }
 });
 
@@ -908,6 +1183,7 @@ function initApp() {
     carregar();
     renderTurmas();
     renderGraficos();
+    inserirBannerFotoConsent();
 }
 
 // Estado inicial: sessão ativa → app; senão, cadastro (1ª vez) ou login.

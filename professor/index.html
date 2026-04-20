@@ -208,6 +208,49 @@
         <div class="chart-hint">X = Evolução média &nbsp;|&nbsp; Y = Desempenho médio</div>
     </div>
 
+    <!-- Input escondido para upload de foto de aluno -->
+    <input type="file" id="fileFoto" accept="image/jpeg,image/png,image/webp" style="display:none;">
+
+    <!-- Dialog: Consentimento LGPD para foto do aluno -->
+    <dialog id="modalFotoConsent" class="foto-dialog" aria-labelledby="fotoConsentTitulo">
+        <div class="foto-dialog-form">
+            <h2 id="fotoConsentTitulo"><i class="fas fa-shield-halved"></i> Responsabilidade sobre imagem do aluno</h2>
+            <div class="foto-dialog-corpo">
+                <p>Ao adicionar fotografias de alunos neste sistema, você declara que:</p>
+                <ul>
+                    <li>Obteve <strong>consentimento expresso</strong> dos pais ou responsáveis legais (Art. 14 da LGPD — Lei 13.709/2018) quando se tratar de menor de idade, ou do próprio aluno quando maior.</li>
+                    <li>A foto será usada <strong>exclusivamente para fins pedagógicos internos</strong> (identificação do aluno neste sistema de rubricas), sem divulgação pública, redes sociais ou compartilhamento com terceiros.</li>
+                    <li>Os dados ficam armazenados <strong>apenas neste navegador</strong> (localStorage). Você é responsável pelo controle de acesso ao dispositivo e pela exclusão da foto quando a relação pedagógica terminar.</li>
+                    <li>Em caso de solicitação do titular (aluno ou responsável), você se compromete a <strong>remover a foto imediatamente</strong> pelo botão "Remover foto".</li>
+                    <li>O uso indevido pode configurar violação do <strong>direito de imagem</strong> (Art. 20 do Código Civil) e da <strong>LGPD</strong>, cuja responsabilidade é integralmente do operador deste sistema (o educador).</li>
+                </ul>
+                <label class="foto-dialog-chk" id="wrapChkFotoConsent">
+                    <input type="checkbox" id="chkFotoConsent">
+                    <span>Li, compreendi e aceito a responsabilidade pelo uso das imagens.</span>
+                </label>
+            </div>
+            <div class="foto-dialog-acoes">
+                <button type="button" id="btnFotoConsentCancel" class="btn btn-secondary btn-sm">Cancelar</button>
+                <button type="button" id="btnFotoConsentOk" class="btn btn-primary btn-sm" disabled>Aceitar e selecionar foto</button>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Dialog: Menu de ações para foto já existente -->
+    <dialog id="modalFotoAcoes" class="foto-dialog" aria-labelledby="fotoAcoesTitulo">
+        <div class="foto-dialog-form">
+            <h2 id="fotoAcoesTitulo"><i class="fas fa-image"></i> Foto do aluno</h2>
+            <div class="foto-dialog-corpo">
+                <p>O que você deseja fazer com a foto deste aluno?</p>
+            </div>
+            <div class="foto-dialog-acoes">
+                <button type="button" id="btnFotoAcoesCancel" class="btn btn-secondary btn-sm"><i class="fas fa-times"></i> Cancelar</button>
+                <button type="button" id="btnFotoRemover" class="btn btn-sm btn-foto-remover"><i class="fas fa-trash-alt"></i> Remover</button>
+                <button type="button" id="btnFotoTrocar" class="btn btn-primary btn-sm"><i class="fas fa-camera-rotate"></i> Trocar</button>
+            </div>
+        </div>
+    </dialog>
+
     <!-- Modal Exportação -->
     <div id="modalExport" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
         <div class="card" style="width: 100%; max-width: 400px; margin: 0; animation: slideUp 0.3s ease;">
