@@ -7,6 +7,14 @@ e este projeto utiliza o histórico de commits como referência cronológica.
 
 ---
 
+## [2026-04-21]
+
+### Alterado
+- **`6fbecd2` — Add copyright owner and year to license**
+  Atualização do ano para 2026 e titular dos direitos autorais para `kadynz` na Licença Apache 2.0.
+- **`45a7bd8` — Update license to Apache 2.0**
+  Substituição da Licença MIT pela Licença Apache 2.0.
+
 ## [2026-04-20]
 
 ### Adicionado
