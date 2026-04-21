@@ -13,6 +13,14 @@ e este projeto utiliza o histórico de commits como referência cronológica.
 - **`a361206` — feat: optional per-student photo with LGPD consent gate**
   Foto opcional por aluno no portal do professor, armazenada como *data URL* de JPEG redimensionado (256x256, ~100 KB) na `localStorage`. Entrada aceita JPG/PNG/WebP, mínimo 100x100 e máximo 10 MB. Na primeira foto, um modal de consentimento LGPD (Lei 13.709/2018 e Art. 20 do Código Civil) é exibido; o aceite fica persistido e um banner permanente permite reabrir os termos. Alunos sem foto continuam usando iniciais coloridas, garantindo compatibilidade com backups antigos. Erros de quota são capturados e orientam o professor a exportar backup.
 
+### Documentação
+- **`54e73a5` — docs: add CHANGELOG and refine README**
+  Criação do `CHANGELOG.md` com uma entrada por commit agrupada por data em formato Keep a Changelog, cobrindo do commit inicial até o recurso de foto com LGPD. No `README.md`: aviso creditando a IA do Claude Opus 4.7 logo após o parágrafo de abertura e remoção de emojis decorativos dos cabeçalhos de seção e dos rótulos de portal — o 🎓 do título "Rubrica Aluno & Professor" foi preservado.
+- **`0e7dd72` — docs: restore rubric color dots and style the AI notice as a warning**
+  Bolinhas coloridas (🔴 🟠 🔵 🟢) reintroduzidas na coluna "Cor" da Matriz da Rubrica, em paridade com o que é renderizado nos dois portais. O *callout* de crédito à IA virou `> [!WARNING]` (amarelo) com título `⚠️ AVISO DE IA` em destaque, substituindo o `> [!NOTE]` azul anterior.
+- **Wiki inicial do projeto (fora do repositório)**
+  Publicação do Wiki do GitLab com 11 páginas: *home* (índice), Arquitetura, Portal do Aluno, Portal do Professor, Modelo de Dados, Segurança e Autenticação, LGPD e Foto do Aluno, Importação e Exportação, Rubrica de Avaliação, Deploy e CI-CD, Desenvolvimento Local. Conteúdo derivado diretamente do código — chaves de `localStorage`, limites de foto, *schemas* TypeScript dos registros, fluxos de auth e pipeline do `.gitlab-ci.yml`.
+
 ---
 
 ## [2026-04-19]
