@@ -1,4 +1,4 @@
-# 🎓 Rubrica Aluno & Professor
+# Rubrica Aluno & Professor
 
 > Um sistema ágil e 100% *client-side* de avaliação baseada em rubricas, com interfaces independentes para autoavaliação e gestão de turmas.
 
@@ -8,7 +8,7 @@
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 
 > [!WARNING]
-> **⚠️ AVISO DE IA**: Este projeto contou com a ajuda da IA do Claude Opus 4.7 da Anthropic durante seu desenvolvimento.
+> **AVISO DE IA**: Este projeto contou com a ajuda da IA do Claude Opus 4.7 da Anthropic durante seu desenvolvimento.
 
 ## Por Que Isso Existe
 
