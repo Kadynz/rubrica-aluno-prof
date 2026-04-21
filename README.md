@@ -14,30 +14,13 @@
 
 Em muitas escolas e infraestruturas educacionais limitadas, o acesso a sistemas complexos com banco de dados em nuvem não é viável ou não é aprovado pela TI local. A **Rubrica Aluno & Professor** resolve isso rodando totalmente no navegador (*local-first*). Ela permite que alunos façam autoavaliações rápidas e professores acompanhem o progresso através de gráficos analíticos em tempo real, sem nenhum custo de infraestrutura de servidor ou instalação complexa.
 
-## Início Rápido
+## Instalação e Acesso
 
-O caminho mais curto para rodar a aplicação no seu navegador.
+Como o projeto possui deploy automatizado via GitLab Pages, **nenhuma instalação é necessária** para o uso final. Basta acessar o link público do projeto (disponível nas configurações de Pages do repositório).
 
-```bash
-# Clone o repositório
-git clone https://gitlab.com/kadynz/rubrica-aluno-prof.git
-cd rubrica-aluno-prof
+Caso baixe os arquivos para desenvolvimento local, não os abra diretamente via `file://` no navegador, pois isso gera restrições de segurança (CORS) que quebram as APIs de criptografia. Utilize sempre um ambiente de servidor web de desenvolvimento.
 
-# Inicie um servidor HTTP local
-python3 -m http.server 8000
-```
-
-Abra `http://localhost:8000/` no seu navegador. 
-
-## Instalação
-
-**Pré-requisitos**: Um servidor web estático básico (Node `serve`, Python `http.server`, Nginx, Apache) ou plataformas de hospedagem como GitLab Pages / GitHub Pages.
-
-1. Baixe os arquivos do projeto.
-2. Coloque-os no diretório público do seu servidor web.
-3. Não abra os arquivos diretamente via `file://` no navegador, pois isso gera restrições restritas de segurança (CORS) que podem quebrar os scripts. Utilize sempre os protocolos `http://` ou `https://`.
-
-Para um deploy automatizado, o repositório já inclui um arquivo `.gitlab-ci.yml` configurado para gerar a build pública no GitLab Pages, com análises automáticas de segurança (SAST e Secret Detection).
+O repositório inclui um arquivo `.gitlab-ci.yml` configurado para gerar a build pública automaticamente no GitLab Pages, com análises de segurança (SAST e Secret Detection) embutidas no fluxo de CI/CD.
 
 ## Uso
 
