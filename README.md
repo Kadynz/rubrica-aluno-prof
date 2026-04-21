@@ -7,7 +7,9 @@
 
 > Um sistema ágil de avaliação baseada em rubricas, com interfaces independentes para autoavaliação (Aluno) e gestão de desempenho (Professor). Construído para rodar 100% no navegador (Client-Side) garantindo simplicidade, segurança e portabilidade em infraestruturas educacionais limitadas.
 
-> [!NOTE]
+> [!WARNING]
+> **⚠️ AVISO DE IA**
+>
 > Este projeto contou com a ajuda da IA do Claude Opus 4.7 da Anthropic durante seu desenvolvimento.
 
 ---
@@ -72,7 +74,7 @@ A aplicação passou por auditoria de acessibilidade para suportar o ecossistema
 
 | Nível | Cor | Desempenho do Aluno | Qualidade da Aula |
 |-------|-----|--------------------|--------------------|
-| 1  | Vermelho | Iniciante          | Confusa            |
-| 2  | Laranja  | Básico             | Regular            |
-| 3  | Azul     | Proficiente        | Boa                |
-| 4  | Verde    | Avançado           | Excelente          |
+| 1  | 🔴 Vermelho | Iniciante          | Confusa            |
+| 2  | 🟠 Laranja  | Básico             | Regular            |
+| 3  | 🔵 Azul     | Proficiente        | Boa                |
+| 4  | 🟢 Verde    | Avançado           | Excelente          |
