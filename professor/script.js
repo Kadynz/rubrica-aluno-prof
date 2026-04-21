@@ -376,7 +376,15 @@ function selecionarTurma(id) {
     ocultar('secaoHistorico');
     renderTurmas();
     renderAlunos();
+    renderGraficos();
     mostrar('secaoAlunos');
+}
+
+function escopoAlunosEAvals() {
+    const alunosEscopo = turmaAtiva ? alunos.filter(a => a.turmaId === turmaAtiva) : alunos;
+    const idsEscopo = new Set(alunosEscopo.map(a => a.id));
+    const avalsEscopo = avaliacoes.filter(av => idsEscopo.has(av.alunoId));
+    return { alunosEscopo, avalsEscopo };
 }
 
 function renderTurmas() {
@@ -680,7 +688,8 @@ const quadrantPlugin = {
 };
 
 function renderGraficoLinha() {
-    const alunosComAvals = alunos.filter(a => avaliacoes.some(av => av.alunoId === a.id));
+    const { alunosEscopo, avalsEscopo } = escopoAlunosEAvals();
+    const alunosComAvals = alunosEscopo.filter(a => avalsEscopo.some(av => av.alunoId === a.id));
     const empty = document.getElementById('emptyLinha');
     const wrapper = document.getElementById('wrapperLinha');
 
@@ -693,11 +702,11 @@ function renderGraficoLinha() {
     empty.style.display = 'none';
     wrapper.style.display = 'block';
 
-    const datas = [...new Set(avaliacoes.map(av => av.date))].sort((a,b) => new Date(a).getTime() - new Date(b).getTime());
+    const datas = [...new Set(avalsEscopo.map(av => av.date))].sort((a,b) => new Date(a).getTime() - new Date(b).getTime());
     const labels = datas.map(d => { const [y, m, dd] = d.split('-'); return `${dd}/${m}`; });
 
     const alunoAvals = {};
-    avaliacoes.forEach(av => {
+    avalsEscopo.forEach(av => {
         if (!alunoAvals[av.alunoId]) alunoAvals[av.alunoId] = [];
         alunoAvals[av.alunoId].push(av);
     });
@@ -750,7 +759,8 @@ function renderGraficoLinha() {
 }
 
 function renderGraficoQuadrante() {
-    const alunosComAvals = alunos.filter(a => avaliacoes.some(av => av.alunoId === a.id));
+    const { alunosEscopo, avalsEscopo } = escopoAlunosEAvals();
+    const alunosComAvals = alunosEscopo.filter(a => avalsEscopo.some(av => av.alunoId === a.id));
     const empty = document.getElementById('emptyQuadrante');
     const wrapper = document.getElementById('wrapperQuadrante');
 
@@ -764,7 +774,7 @@ function renderGraficoQuadrante() {
     wrapper.style.display = 'block';
 
     const alunoAvals = {};
-    avaliacoes.forEach(av => {
+    avalsEscopo.forEach(av => {
         if (!alunoAvals[av.alunoId]) alunoAvals[av.alunoId] = [];
         alunoAvals[av.alunoId].push(av);
     });
