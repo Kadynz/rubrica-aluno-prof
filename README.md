@@ -46,11 +46,6 @@ Como o sistema é *offline-first* e usa armazenamento local, trocar de computado
 | **Exportar** | Aba Inferior (Professor) | Baixa um arquivo `.json` (backup total) ou `.csv` (dados tabulares) com turmas, alunos e notas. |
 | **Importar** | Aba Inferior (Professor) | Carrega um `.json` ou `.csv` previamente exportado para restaurar os dados no dispositivo atual. |
 
-## Referência Completa (Wiki)
-
-A arquitetura profunda, matrizes da rubrica, fluxos de LGPD e segurança da aplicação encontram-se rigorosamente documentados no nosso Wiki.
-
-[Veja a Documentação Completa (Wiki) →](https://gitlab.com/kadynz/rubrica-aluno-prof/-/wikis/home)
 
 ## Contribuição
 
