@@ -9,7 +9,23 @@ e este projeto utiliza o histórico de commits como referência cronológica.
 
 ## [2026-04-21]
 
+### Corrigido
+- **`8420578` — fix: scope professor charts to active class**
+  O "Gráfico de Evolução" e o "Gráfico Quadrante" do portal do professor não reagiam à troca de turma — a leitura era sempre global, ignorando `turmaAtiva`. Extraído o auxiliar `escopoAlunosEAvals()` e ambos os gráficos passam a consumir apenas alunos e avaliações da turma selecionada. `selecionarTurma` agora dispara `renderGraficos()` após o *switch*.
+
+### Adicionado
+- **`1071f11` — feat: migrate student photos to IndexedDB with legacy fallback**
+  Fotos de alunos migradas de `data URL` em `localStorage` para `Blob` em IndexedDB, contornando o teto de ~5 MB por origem que limitava o cadastro a ~50 alunos com foto. Migração idempotente controlada por *flag* (`prof_fotos_migrated_v1`), *fallback* transparente para `localStorage` quando o IDB não está disponível, e lista de fotos mantida como *manifest* em memória para permitir *render* sincrono com carregamento tardio via `URL.createObjectURL`. Exportação JSON continua embutindo a foto inline (portabilidade de *backup* preservada); importação JSON reparte as fotos para o IDB ao reimportar. Importação CSV limpa todas as fotos (ids novos).
+- **`148d33a` — feat: harden CSV import and add CONTRIBUTING.md**
+  Importador CSV separado em `importarCSV` / `importarJSON` com mensagens de erro específicas para cada falha (parse bruto, cabeçalho, linha individual) em vez do genérico "arquivo inválido". Linhas inválidas não abortam mais a importação — são isoladas, contadas e reportadas ao usuário no final. `desempenho`, `aula` e `evolucao` agora validam faixa `1..4` (fallback para defaults seguros); datas aceitas apenas em formato ISO `YYYY-MM-DD`. Adicionado `CONTRIBUTING.md` com receitas de servidor local, estrutura do projeto, convenções de código e checklist de MR.
+
+### Refatorado
+- **`c081740` — refactor: extract shared utils and theme toggle into /shared/**
+  `escapeHtml`, `formatarData` e `hoje` — antes duplicados em `aluno/script.js` e `professor/script.js` — movidos para `shared/utils.js`. O *toggle* de tema claro/escuro e a persistência em `localStorage` foram extraídos para `shared/theme.js`, que dispara um `CustomEvent` `themechange` e permite que cada portal anexe seus próprios efeitos colaterais (defaults do Chart.js e *re-render* dos gráficos específicos de cada portal). Reduz duplicação e corrige potenciais dessincronizações entre os dois portais.
+
 ### Documentação
+- **`3cafedc` — docs: add Quick Start local-serve example and link to Wiki**
+  Adicionadas receitas de servidor local (`python3 -m http.server`, `npx http-server`, `php -S`) na seção de instalação do `README.md`, reforçando que `file://` quebra as APIs de criptografia. Incluída uma seção "Documentação Completa" apontando para o Wiki do GitLab.
 - **`307f0ec` — docs: centralize documentation and deactivate Wiki**
   A documentação foi centralizada exclusivamente no `README.md`, seguindo diretrizes de *Technical Writing*. A seção "Início Rápido" e instruções de servidores locais (Python/Node) foram removidas para focar no acesso direto via GitLab Pages. O repositório externo da Wiki foi esvaziado, o diretório interno `wiki/` foi apagado e a linguagem foi padronizada rigorosamente para PT-BR e sem emojis decorativos (preservando apenas os ícones funcionais da Matriz da Rubrica).
 
