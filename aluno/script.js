@@ -15,24 +15,7 @@ const AVALIACAO = {
     4: { emoji: '🟢', texto: 'Excelente', cls: 'chip-4' },
 };
 
-function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>"'`=\/]/g, s => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '/': '&#x2F;', '`': '&#x60;', '=': '&#x3D;'
-    }[s]));
-}
-
-function formatarData(iso) {
-    if (!iso) return '';
-    const parts = iso.split('-');
-    if (parts.length !== 3) return iso;
-    const [y, m, d] = parts;
-    return `${d}/${m}/${y}`;
-}
-
-function hoje() {
-    return new Date().toISOString().slice(0, 10);
-}
+// escapeHtml, formatarData e hoje vêm de ../shared/utils.js
 
 function carregar() {
     try {
@@ -265,32 +248,16 @@ document.getElementById('btnCancelar').addEventListener('click', limparForm);
 document.getElementById('lessonDate').value = hoje();
 carregar();
 
-// Theme Logic
+// Tema: o toggle + persistência são geridos em ../shared/theme.js.
+// Aqui só atualizamos as defaults do Chart.js e re-renderizamos o gráfico.
 function aplicarTemaAosGraficos() {
     const isDark = document.body.getAttribute('data-theme') === 'dark';
     Chart.defaults.color = isDark ? '#f8fafc' : '#0f172a';
     Chart.defaults.borderColor = isDark ? 'rgba(148,163,184,0.25)' : 'rgba(100,116,139,0.15)';
 }
-
-const currentTheme = localStorage.getItem('theme') || 'light';
-if (currentTheme === 'dark') document.body.setAttribute('data-theme', 'dark');
 aplicarTemaAosGraficos();
 
-const btnThemeToggle = document.getElementById('btnThemeToggle');
-if (btnThemeToggle) {
-    const updateThemeIcon = () => {
-        const isDark = document.body.getAttribute('data-theme') === 'dark';
-        btnThemeToggle.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-    };
-    updateThemeIcon();
-
-    btnThemeToggle.addEventListener('click', () => {
-        const isDark = document.body.getAttribute('data-theme') === 'dark';
-        if (isDark) document.body.removeAttribute('data-theme');
-        else document.body.setAttribute('data-theme', 'dark');
-        localStorage.setItem('theme', isDark ? 'light' : 'dark');
-        updateThemeIcon();
-        aplicarTemaAosGraficos();
-        atualizarEstatisticas();
-    });
-}
+document.addEventListener('themechange', () => {
+    aplicarTemaAosGraficos();
+    atualizarEstatisticas();
+});
