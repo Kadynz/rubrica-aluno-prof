@@ -16,7 +16,14 @@
 
 ## Quick Start
 
-1. Hospede os arquivos em um servidor estático (ex: **GitLab Pages**, **GitHub Pages**) ou abra o arquivo localmente.
+1. Hospede os arquivos em um servidor estático (ex: **GitLab Pages**, **GitHub Pages**) ou sirva localmente:
+   ```bash
+   # com Python 3 (já vem instalado em macOS/Linux)
+   python3 -m http.server 8000
+   # ou, se preferir Node:
+   npx serve
+   ```
+   Acesse `http://localhost:8000/` no navegador. Servir via HTTP evita restrições de CORS que o `file://` aplica.
 2. Acesse os portais:
    - **Portal do Aluno:** `aluno/index.html` (Livre para registrar autoavaliações)
    - **Portal do Professor:** `professor/index.html` (Acesso restrito)
@@ -25,6 +32,22 @@
 O portal do professor requer credenciais para evitar o acesso acidental em computadores compartilhados de escolas.
 
 *As credenciais são tratadas no cliente e, portanto, restritas aos educadores com acesso a esta documentação.*
+
+---
+
+## Documentação Completa
+
+Documentação técnica aprofundada está no **[Wiki do projeto no GitLab](https://gitlab.com/kadynz/rubrica-aluno-prof/-/wikis/home)**, com páginas sobre:
+
+- Arquitetura geral e decisões de design
+- Portal do Aluno e Portal do Professor (fluxos internos)
+- Modelo de Dados (schemas e chaves de `localStorage`)
+- Segurança e Autenticação (hash + salt, modelo de ameaças)
+- LGPD e Foto do Aluno (consentimento, limites, quotas)
+- Importação e Exportação (JSON e CSV)
+- Rubrica de Avaliação (níveis e significado)
+- Deploy e CI/CD (GitLab Pages, SAST, Secret Detection)
+- Desenvolvimento Local
 
 ---
 
