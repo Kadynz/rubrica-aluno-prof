@@ -82,6 +82,148 @@ const FOTO_QUALIDADES = [0.75, 0.6, 0.5];
 const FOTO_ALVO_BYTES = 100 * 1024;
 const FOTO_STORAGE_WARN_BYTES = 4 * 1024 * 1024;
 
+// Backend de fotos: IndexedDB quando disponível, senão localStorage legado.
+// A migração de dados inline (aluno.foto) acontece em initApp() e é idempotente.
+const IDB_NAME = 'rubrica_professor';
+const IDB_VERSION = 1;
+const IDB_STORE_FOTOS = 'fotos';
+const K_FOTOS_MIGRADO = 'prof_fotos_migrated_v1';
+
+let fotosBackend = 'localStorage';   // 'idb' | 'localStorage'
+const fotosManifest = new Set();     // ids de alunos que têm foto (em qualquer backend)
+const fotosObjectURLs = new Map();   // alunoId -> blob URL ativo
+let idbPromise = null;
+
+function abrirIDB() {
+    if (idbPromise) return idbPromise;
+    idbPromise = new Promise((resolve, reject) => {
+        if (!window.indexedDB) { reject(new Error('IndexedDB indisponível neste navegador.')); return; }
+        const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+        req.onupgradeneeded = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains(IDB_STORE_FOTOS)) db.createObjectStore(IDB_STORE_FOTOS);
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error || new Error('Falha ao abrir IndexedDB.'));
+        req.onblocked = () => reject(new Error('IndexedDB bloqueado por outra aba.'));
+    });
+    return idbPromise;
+}
+
+function idbPutFoto(alunoId, blob) {
+    return abrirIDB().then(db => new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE_FOTOS, 'readwrite');
+        tx.objectStore(IDB_STORE_FOTOS).put(blob, alunoId);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+    }));
+}
+
+function idbGetFoto(alunoId) {
+    return abrirIDB().then(db => new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE_FOTOS, 'readonly');
+        const req = tx.objectStore(IDB_STORE_FOTOS).get(alunoId);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+    }));
+}
+
+function idbDeleteFoto(alunoId) {
+    return abrirIDB().then(db => new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE_FOTOS, 'readwrite');
+        tx.objectStore(IDB_STORE_FOTOS).delete(alunoId);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    }));
+}
+
+function idbAllFotoIds() {
+    return abrirIDB().then(db => new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE_FOTOS, 'readonly');
+        const req = tx.objectStore(IDB_STORE_FOTOS).getAllKeys();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+    }));
+}
+
+function idbClearFotos() {
+    return abrirIDB().then(db => new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE_FOTOS, 'readwrite');
+        tx.objectStore(IDB_STORE_FOTOS).clear();
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    }));
+}
+
+function dataUrlParaBlob(dataUrl) {
+    const match = /^data:([^;]+);base64,(.+)$/.exec(dataUrl || '');
+    if (!match) return null;
+    try {
+        const bin = atob(match[2]);
+        const arr = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        return new Blob([arr], { type: match[1] });
+    } catch { return null; }
+}
+
+function blobParaDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(fr.result);
+        fr.onerror = () => reject(fr.error);
+        fr.readAsDataURL(blob);
+    });
+}
+
+function revogarObjectURL(alunoId) {
+    const url = fotosObjectURLs.get(alunoId);
+    if (url) { URL.revokeObjectURL(url); fotosObjectURLs.delete(alunoId); }
+}
+
+function revogarTodosObjectURLs() {
+    fotosObjectURLs.forEach(url => URL.revokeObjectURL(url));
+    fotosObjectURLs.clear();
+}
+
+async function migrarFotosLegadas() {
+    if (localStorage.getItem(K_FOTOS_MIGRADO) === 'true') return;
+    const legadas = alunos.filter(a => typeof a.foto === 'string' && a.foto.startsWith('data:image/'));
+    if (!legadas.length) { localStorage.setItem(K_FOTOS_MIGRADO, 'true'); return; }
+    for (const a of legadas) {
+        const blob = dataUrlParaBlob(a.foto);
+        if (!blob) continue;
+        await idbPutFoto(a.id, blob); // erro aqui propaga e aborta a migração (sem setar flag)
+    }
+    // Sucesso: remove o campo foto dos registros e persiste.
+    alunos = alunos.map(a => {
+        if (typeof a.foto !== 'string') return a;
+        const { foto, ...rest } = a;
+        return rest;
+    });
+    localStorage.setItem(K_ALUNOS, JSON.stringify(alunos));
+    localStorage.setItem(K_FOTOS_MIGRADO, 'true');
+    console.info(`[Fotos] Migração concluída: ${legadas.length} foto(s) movida(s) para IndexedDB.`);
+}
+
+async function prepararBackendFotos() {
+    try {
+        await abrirIDB();
+        fotosBackend = 'idb';
+        await migrarFotosLegadas();
+        const ids = await idbAllFotoIds();
+        fotosManifest.clear();
+        ids.forEach(id => fotosManifest.add(id));
+    } catch (err) {
+        console.warn('[Fotos] IndexedDB indisponível, usando localStorage legado:', err);
+        fotosBackend = 'localStorage';
+        fotosManifest.clear();
+        alunos.forEach(a => {
+            if (typeof a.foto === 'string' && a.foto.startsWith('data:image/')) fotosManifest.add(a.id);
+        });
+    }
+}
+
 function iniciaisDoNome(nome) {
     if (!nome) return '?';
     const partes = nome.trim().split(/\s+/).filter(Boolean);
@@ -96,12 +238,19 @@ function corDoAluno(id) {
     return `hsl(${hue}, 55%, 45%)`;
 }
 
+function alunoTemFoto(aluno) {
+    if (!aluno) return false;
+    if (fotosManifest.has(aluno.id)) return true;
+    return typeof aluno.foto === 'string' && aluno.foto.startsWith('data:image/');
+}
+
 function renderAvatar(aluno) {
     const alt = escapeHtml(aluno.nome || 'aluno');
     const iniciais = escapeHtml(iniciaisDoNome(aluno.nome));
-    if (aluno.foto && typeof aluno.foto === 'string' && aluno.foto.startsWith('data:image/')) {
+    if (alunoTemFoto(aluno)) {
+        // src é preenchido por carregarImagensLazy após o DOM entrar em tela
         return `<div class="aluno-avatar aluno-avatar-com-foto" data-avatar-id="${aluno.id}" role="button" tabindex="0" aria-label="Alterar ou remover foto de ${alt}" title="Alterar ou remover foto">
-            <img src="${aluno.foto}" alt="Foto de ${alt}" loading="lazy">
+            <img data-foto-id="${aluno.id}" alt="Foto de ${alt}" loading="lazy">
             <span class="aluno-avatar-overlay"><i class="fas fa-camera"></i></span>
         </div>`;
     }
@@ -109,6 +258,32 @@ function renderAvatar(aluno) {
         <span class="aluno-avatar-iniciais">${iniciais}</span>
         <span class="aluno-avatar-overlay"><i class="fas fa-camera"></i></span>
     </div>`;
+}
+
+async function carregarImagensLazy(rootEl) {
+    if (!rootEl) return;
+    const imgs = rootEl.querySelectorAll('img[data-foto-id]');
+    for (const img of imgs) {
+        const id = Number(img.dataset.fotoId);
+        if (fotosBackend === 'idb') {
+            let url = fotosObjectURLs.get(id);
+            if (!url) {
+                try {
+                    const blob = await idbGetFoto(id);
+                    if (!blob) continue;
+                    url = URL.createObjectURL(blob);
+                    fotosObjectURLs.set(id, url);
+                } catch (err) {
+                    console.warn('[Fotos] Falha ao carregar foto', id, err);
+                    continue;
+                }
+            }
+            img.src = url;
+        } else {
+            const aluno = alunos.find(a => a.id === id);
+            if (aluno && typeof aluno.foto === 'string') img.src = aluno.foto;
+        }
+    }
 }
 
 function jaConsentiuFoto() {
@@ -240,24 +415,61 @@ function estimarStorageBytes() {
     return total * 2;
 }
 
-function setFotoAluno(alunoId, fotoDataUrl) {
+async function setFotoAluno(alunoId, fotoDataUrl) {
     const idx = alunos.findIndex(a => a.id === alunoId);
     if (idx === -1) return false;
-    const previa = alunos[idx].foto;
+
+    // Remoção: limpa IDB (se houver), campo legado e manifest.
     if (fotoDataUrl === null) {
-        delete alunos[idx].foto;
-    } else {
-        alunos[idx] = { ...alunos[idx], foto: fotoDataUrl };
+        if (fotosBackend === 'idb') {
+            try { await idbDeleteFoto(alunoId); }
+            catch (err) { alert('Falha ao remover foto: ' + (err?.message || err)); return false; }
+        }
+        if (alunos[idx].foto !== undefined) {
+            delete alunos[idx].foto;
+            try { localStorage.setItem(K_ALUNOS, JSON.stringify(alunos)); } catch { /* foto legado raro; ignorar */ }
+        }
+        fotosManifest.delete(alunoId);
+        revogarObjectURL(alunoId);
+        return true;
     }
+
+    // Escrita no IndexedDB (backend preferido).
+    if (fotosBackend === 'idb') {
+        const blob = dataUrlParaBlob(fotoDataUrl);
+        if (!blob) { alert('Imagem inválida.'); return false; }
+        try {
+            await idbPutFoto(alunoId, blob);
+            fotosManifest.add(alunoId);
+            revogarObjectURL(alunoId);
+            // Campo legado (se ainda existir em registros antigos) deixa de ser fonte de verdade.
+            if (alunos[idx].foto !== undefined) {
+                delete alunos[idx].foto;
+                try { localStorage.setItem(K_ALUNOS, JSON.stringify(alunos)); } catch { /* ignorar */ }
+            }
+            return true;
+        } catch (err) {
+            const msg = err && err.name === 'QuotaExceededError'
+                ? 'Armazenamento do navegador cheio. Exporte um backup e apague fotos antigas.'
+                : 'Falha ao salvar foto: ' + (err?.message || err);
+            alert(msg);
+            return false;
+        }
+    }
+
+    // Fallback legado: foto inline em localStorage (navegadores sem IndexedDB).
+    const previa = alunos[idx].foto;
+    alunos[idx] = { ...alunos[idx], foto: fotoDataUrl };
     try {
         localStorage.setItem(K_ALUNOS, JSON.stringify(alunos));
+        fotosManifest.add(alunoId);
     } catch (err) {
         if (previa !== undefined) alunos[idx].foto = previa;
         else delete alunos[idx].foto;
         if (err && err.name === 'QuotaExceededError') {
             alert('Armazenamento do navegador cheio. Exporte um backup JSON, apague dados antigos e tente novamente.');
         } else {
-            alert('Não foi possível salvar a foto: ' + (err && err.message ? err.message : err));
+            alert('Não foi possível salvar a foto: ' + (err?.message || err));
         }
         return false;
     }
@@ -291,10 +503,10 @@ async function aoClicarAvatar(alunoId) {
     const aluno = alunos.find(a => a.id === alunoId);
     if (!aluno) return;
 
-    if (aluno.foto) {
+    if (alunoTemFoto(aluno)) {
         const acao = await mostrarMenuFotoExistente();
         if (acao === 'remover') {
-            if (setFotoAluno(alunoId, null)) renderAlunos();
+            if (await setFotoAluno(alunoId, null)) renderAlunos();
             return;
         }
         if (acao !== 'trocar') return;
@@ -310,7 +522,7 @@ async function aoClicarAvatar(alunoId) {
     if (!file) return;
     try {
         const dataUrl = await processarImagem(file);
-        if (setFotoAluno(alunoId, dataUrl)) renderAlunos();
+        if (await setFotoAluno(alunoId, dataUrl)) renderAlunos();
     } catch (err) {
         alert(err && err.message ? err.message : 'Falha ao processar a imagem.');
     }
@@ -447,6 +659,12 @@ function excluirAluno(id) {
     avaliacoes = avaliacoes.filter(av => av.alunoId !== id);
     alunos = alunos.filter(a => a.id !== id);
     salvar(true);
+    // Remove foto associada do backend ativo.
+    if (fotosManifest.has(id)) {
+        fotosManifest.delete(id);
+        revogarObjectURL(id);
+        if (fotosBackend === 'idb') idbDeleteFoto(id).catch(err => console.warn('[Fotos] Falha ao remover foto do aluno excluído:', err));
+    }
     if (alunoAtivo === id) {
         alunoAtivo = null;
         ocultar('secaoAvaliacao');
@@ -495,6 +713,7 @@ function renderAlunos() {
             <button class="item-del" data-id="${a.id}" title="Excluir"><i class="fas fa-trash-alt"></i></button>
         </div>`;
     }).join('');
+    carregarImagensLazy(el);
 }
 
 // Event Delegation for Alunos
