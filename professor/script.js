@@ -1136,14 +1136,22 @@ async function handleAuth() {
     }
 }
 
-function resetarAcesso() {
-    if (!confirm('Isso apaga credenciais, turmas, alunos e avaliações deste navegador. Continuar?')) return;
+async function resetarAcesso() {
+    if (!confirm('Isso apaga credenciais, turmas, alunos, avaliações e fotos deste navegador. Continuar?')) return;
     if (!confirm('Tem CERTEZA? Não há como recuperar os dados depois.')) return;
     localStorage.removeItem(K_CREDS);
     localStorage.removeItem(K_TURMAS);
     localStorage.removeItem(K_ALUNOS);
     localStorage.removeItem(K_AVALS);
+    localStorage.removeItem(K_FOTO_CONSENT);
+    localStorage.removeItem(K_FOTOS_MIGRADO);
     sessionStorage.removeItem(K_SESSION);
+    revogarTodosObjectURLs();
+    fotosManifest.clear();
+    if (fotosBackend === 'idb') {
+        try { await idbClearFotos(); }
+        catch (err) { console.warn('[Fotos] Falha ao limpar IndexedDB no reset:', err); }
+    }
     configurarTelaAuth('signup');
 }
 
@@ -1213,14 +1221,14 @@ document.getElementById('btnCancelExport').addEventListener('click', () => {
     document.getElementById('modalExport').style.display = 'none';
 });
 
-document.getElementById('btnConfirmExport').addEventListener('click', () => {
+document.getElementById('btnConfirmExport').addEventListener('click', async () => {
     const escopo = document.getElementById('exportEscopo').value;
     const formato = document.getElementById('exportFormato').value;
-    
+
     let expTurmas = turmas;
     let expAlunos = alunos;
     let expAvaliacoes = avaliacoes;
-    
+
     if (escopo !== 'all') {
         if (escopo.startsWith('turma_')) {
             const tId = Number(escopo.split('_')[1]);
@@ -1236,15 +1244,31 @@ document.getElementById('btnConfirmExport').addEventListener('click', () => {
             expAvaliacoes = avaliacoes.filter(av => av.alunoId === aId);
         }
     }
-    
+
     if (formato === 'json') {
-        const data = { turmas: expTurmas, alunos: expAlunos, avaliacoes: expAvaliacoes };
+        // Embute fotos inline (data URL) para backups portáveis entre dispositivos.
+        const expAlunosComFoto = [];
+        for (const a of expAlunos) {
+            let foto = null;
+            if (fotosBackend === 'idb' && fotosManifest.has(a.id)) {
+                try {
+                    const blob = await idbGetFoto(a.id);
+                    if (blob) foto = await blobParaDataUrl(blob);
+                } catch (err) {
+                    console.warn('[Fotos] Falha ao exportar foto do aluno', a.id, err);
+                }
+            } else if (typeof a.foto === 'string') {
+                foto = a.foto;
+            }
+            expAlunosComFoto.push(foto ? { ...a, foto } : { ...a });
+        }
+        const data = { turmas: expTurmas, alunos: expAlunosComFoto, avaliacoes: expAvaliacoes };
         baixarArquivo(JSON.stringify(data, null, 2), 'application/json', 'json');
     } else if (formato === 'csv') {
         const csvContent = gerarCSV(expTurmas, expAlunos, expAvaliacoes);
         baixarArquivo(csvContent, 'text/csv;charset=utf-8', 'csv');
     }
-    
+
     document.getElementById('modalExport').style.display = 'none';
 });
 
@@ -1302,17 +1326,41 @@ document.getElementById('btnImport').addEventListener('click', () => {
     document.getElementById('fileImport').click();
 });
 
+async function limparTodasFotos() {
+    revogarTodosObjectURLs();
+    fotosManifest.clear();
+    if (fotosBackend === 'idb') {
+        try { await idbClearFotos(); }
+        catch (err) { console.warn('[Fotos] Falha ao limpar IndexedDB antes da importação:', err); }
+    }
+}
+
+async function importarFotosJSON(alunosImportados) {
+    if (fotosBackend !== 'idb') return; // fallback legado mantém foto inline em alunos
+    for (const a of alunosImportados) {
+        if (typeof a.foto !== 'string' || !a.foto.startsWith('data:image/')) continue;
+        const blob = dataUrlParaBlob(a.foto);
+        if (!blob) continue;
+        try {
+            await idbPutFoto(a.id, blob);
+            fotosManifest.add(a.id);
+        } catch (err) {
+            console.warn('[Fotos] Falha ao importar foto do aluno', a.id, err);
+        }
+    }
+}
+
 document.getElementById('fileImport').addEventListener('change', e => {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
-    reader.onload = ev => {
+    reader.onload = async ev => {
         try {
             if (file.name.toLowerCase().endsWith('.csv')) {
                 let text = ev.target.result;
                 if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-                
+
                 const parseCSV = (txt) => {
                     let p = '', row = [''], ret = [row], i = 0, r = 0, s = !0, l;
                     for (l of txt) {
@@ -1329,13 +1377,13 @@ document.getElementById('fileImport').addEventListener('change', e => {
                     if (ret[ret.length - 1].length === 1 && ret[ret.length - 1][0] === '') ret.pop();
                     return ret;
                 };
-                
+
                 const rows = parseCSV(text);
                 if (rows.length < 2) throw new Error('CSV vazio ou inválido.');
                 const header = rows[0];
                 if (header[0] !== 'Turma' || header[1] !== 'Aluno') throw new Error('Cabeçalho CSV inválido.');
-                
-                if (confirm('Atenção: A importação do CSV substituirá todos os dados atuais. Deseja continuar?')) {
+
+                if (confirm('Atenção: A importação do CSV substituirá todos os dados atuais (incluindo fotos). Deseja continuar?')) {
                     const newTurmas = [];
                     const newAlunos = [];
                     const newAvaliacoes = [];
@@ -1344,21 +1392,21 @@ document.getElementById('fileImport').addEventListener('change', e => {
                     let nextTId = Date.now();
                     let nextAId = Date.now() + 10000;
                     let nextAvId = Date.now() + 20000;
-                    
+
                     for (let j = 1; j < rows.length; j++) {
                         const row = rows[j];
                         if (row.length < 7) continue;
                         const tNome = row[0].trim();
                         const aNome = row[1].trim();
                         if (!tNome || !aNome) continue;
-                        
+
                         let tId = tMap[tNome];
                         if (!tId) { tId = nextTId++; tMap[tNome] = tId; newTurmas.push({ id: tId, nome: tNome }); }
-                        
+
                         const aKey = tId + '_' + aNome;
                         let aId = aMap[aKey];
                         if (!aId) { aId = nextAId++; aMap[aKey] = aId; newAlunos.push({ id: aId, turmaId: tId, nome: aNome }); }
-                        
+
                         newAvaliacoes.push({
                             id: nextAvId++,
                             alunoId: aId,
@@ -1369,8 +1417,9 @@ document.getElementById('fileImport').addEventListener('change', e => {
                             evolucao: Number(row[6]) || 2
                         });
                     }
-                    
+
                     turmas = newTurmas; alunos = newAlunos; avaliacoes = newAvaliacoes;
+                    await limparTodasFotos(); // ids novos → fotos antigas virariam órfãs
                     salvar(true); turmaAtiva = null; alunoAtivo = null;
                     renderTurmas(); ocultar('secaoAlunos'); ocultar('secaoAvaliacao'); ocultar('secaoHistorico');
                     renderGraficos(); alert('CSV importado com sucesso!');
@@ -1378,10 +1427,25 @@ document.getElementById('fileImport').addEventListener('change', e => {
             } else {
                 const data = JSON.parse(ev.target.result);
                 if (Array.isArray(data.turmas) && Array.isArray(data.alunos) && Array.isArray(data.avaliacoes)) {
-                    if (confirm('Atenção: A importação do JSON substituirá todos os dados atuais. Deseja continuar?')) {
+                    if (confirm('Atenção: A importação do JSON substituirá todos os dados atuais (incluindo fotos). Deseja continuar?')) {
                         turmas = data.turmas;
-                        alunos = data.alunos;
                         avaliacoes = data.avaliacoes;
+                        await limparTodasFotos();
+                        if (fotosBackend === 'idb') {
+                            await importarFotosJSON(data.alunos);
+                            // Fotos vão pro IDB; registros não carregam o campo inline.
+                            alunos = data.alunos.map(a => {
+                                if (typeof a.foto !== 'string') return a;
+                                const { foto, ...rest } = a;
+                                return rest;
+                            });
+                            localStorage.setItem(K_FOTOS_MIGRADO, 'true');
+                        } else {
+                            alunos = data.alunos;
+                            alunos.forEach(a => {
+                                if (typeof a.foto === 'string' && a.foto.startsWith('data:image/')) fotosManifest.add(a.id);
+                            });
+                        }
                         salvar(true);
                         turmaAtiva = null;
                         alunoAtivo = null;
@@ -1397,6 +1461,7 @@ document.getElementById('fileImport').addEventListener('change', e => {
                 }
             }
         } catch (err) {
+            console.error('[Import]', err);
             alert('Erro ao ler o arquivo. Arquivo corrompido ou inválido.');
         } finally {
             e.target.value = ''; // Reset input
@@ -1405,11 +1470,12 @@ document.getElementById('fileImport').addEventListener('change', e => {
     reader.readAsText(file);
 });
 
-function initApp() {
+async function initApp() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('appContent').style.display = 'block';
     document.getElementById('avalDate').value = hoje();
     carregar();
+    await prepararBackendFotos();
     renderTurmas();
     renderGraficos();
     inserirBannerFotoConsent();
