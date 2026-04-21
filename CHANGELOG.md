@@ -9,6 +9,10 @@ e este projeto utiliza o histórico de commits como referência cronológica.
 
 ## [2026-04-21]
 
+### Documentação
+- **`307f0ec` — docs: centralize documentation and deactivate Wiki**
+  A documentação foi centralizada exclusivamente no `README.md`, seguindo diretrizes de *Technical Writing*. A seção "Início Rápido" e instruções de servidores locais (Python/Node) foram removidas para focar no acesso direto via GitLab Pages. O repositório externo da Wiki foi esvaziado, o diretório interno `wiki/` foi apagado e a linguagem foi padronizada rigorosamente para PT-BR e sem emojis decorativos (preservando apenas os ícones funcionais da Matriz da Rubrica).
+
 ### Alterado
 - **`6fbecd2` — Add copyright owner and year to license**
   Atualização do ano para 2026 e titular dos direitos autorais para `kadynz` na Licença Apache 2.0.
