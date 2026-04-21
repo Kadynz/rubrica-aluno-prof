@@ -7,23 +7,26 @@
 
 > Um sistema ágil de avaliação baseada em rubricas, com interfaces independentes para autoavaliação (Aluno) e gestão de desempenho (Professor). Construído para rodar 100% no navegador (Client-Side) garantindo simplicidade, segurança e portabilidade em infraestruturas educacionais limitadas.
 
+> [!NOTE]
+> Este projeto contou com a ajuda da IA do Claude Opus 4.7 da Anthropic durante seu desenvolvimento.
+
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 1. Hospede os arquivos em um servidor estático (ex: **GitLab Pages**, **GitHub Pages**) ou abra o arquivo localmente.
 2. Acesse os portais:
-   - **👩‍🎓 Portal do Aluno:** `aluno/index.html` (Livre para registrar autoavaliações)
-   - **👨‍🏫 Portal do Professor:** `professor/index.html` (Acesso restrito)
+   - **Portal do Aluno:** `aluno/index.html` (Livre para registrar autoavaliações)
+   - **Portal do Professor:** `professor/index.html` (Acesso restrito)
 
-### 🔐 Acesso do Professor
+### Acesso do Professor
 O portal do professor requer credenciais para evitar o acesso acidental em computadores compartilhados de escolas.
 
 *As credenciais são tratadas no cliente e, portanto, restritas aos educadores com acesso a esta documentação.*
 
 ---
 
-## 🛠️ Funcionalidades
+## Funcionalidades
 
 ### Portal do Aluno (`aluno/index.html`)
 - **Autoavaliação Dinâmica:** Registro rápido de aulas e auto-percepção de nível (Iniciante ao Avançado).
@@ -41,7 +44,7 @@ O portal do professor requer credenciais para evitar o acesso acidental em compu
 
 ---
 
-## 🏗️ Arquitetura e Segurança (Local-First)
+## Arquitetura e Segurança (Local-First)
 
 Este projeto foi desenhado sob uma arquitetura puramente **Client-Side** (Frontend apenas) por dois motivos: zero custo de infraestrutura e zero dependência de TI da escola.
 
@@ -55,7 +58,7 @@ Este projeto foi desenhado sob uma arquitetura puramente **Client-Side** (Fronte
 
 ---
 
-## ♿ Acessibilidade (WCAG)
+## Acessibilidade (WCAG)
 
 A aplicação passou por auditoria de acessibilidade para suportar o ecossistema educacional inclusivo:
 - Estrutura semântica reforçada com relacionamentos `for="id"`.
@@ -65,11 +68,11 @@ A aplicação passou por auditoria de acessibilidade para suportar o ecossistema
 
 ---
 
-## 📋 Matriz da Rubrica
+## Matriz da Rubrica
 
 | Nível | Cor | Desempenho do Aluno | Qualidade da Aula |
 |-------|-----|--------------------|--------------------|
-| 🔴 1  | Vermelho | Iniciante          | Confusa            |
-| 🟠 2  | Laranja  | Básico             | Regular            |
-| 🔵 3  | Azul     | Proficiente        | Boa                |
-| 🟢 4  | Verde    | Avançado           | Excelente          |
+| 1  | Vermelho | Iniciante          | Confusa            |
+| 2  | Laranja  | Básico             | Regular            |
+| 3  | Azul     | Proficiente        | Boa                |
+| 4  | Verde    | Avançado           | Excelente          |
