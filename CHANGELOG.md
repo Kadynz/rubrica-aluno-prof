@@ -7,6 +7,14 @@ e este projeto utiliza o histórico de commits como referência cronológica.
 
 ---
 
+## [2026-04-22]
+
+### Corrigido
+- **`fix: include shared/ directory in GitLab Pages deploy`**
+  O job `pages` em `.gitlab-ci.yml` não copiava o diretório `shared/` para `public/`, então em produção `../shared/utils.js` e `../shared/theme.js` retornavam 404. Consequência: `hoje`, `escapeHtml` e `formatarData` ficavam indefinidos; a primeira referência a `hoje()` dentro de `initApp()` lançava `ReferenceError` e, por `initApp` ser `async` sem `.catch`, o erro virava *unhandled rejection* silencioso. `renderTurmas()`, `renderGraficos()` e `inserirBannerFotoConsent()` nunca rodavam — o portal do professor parecia logado mas não listava turmas nem avaliações. Regressão introduzida em `c081740` (refactor do `shared/`), que não atualizou o deploy correspondente. Não reproduzia em `file://` ou servidor local porque o path resolvia no próprio repositório.
+
+---
+
 ## [2026-04-21]
 
 ### Corrigido

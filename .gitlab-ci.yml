@@ -23,7 +23,7 @@ pages:
   stage: deploy
   script:
     - mkdir public
-    - cp -r aluno professor index.html public/
+    - cp -r aluno professor shared index.html public/
   artifacts:
     paths:
       - public
