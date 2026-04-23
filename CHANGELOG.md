@@ -7,6 +7,14 @@ e este projeto utiliza o histórico de commits como referência cronológica.
 
 ---
 
+## [2026-04-23]
+
+### Adicionado
+- **`1d22a66` — feat: adiciona logo.png como favicon em todas as páginas**
+  `logo.png` definido como ícone do site via `<link rel="icon" type="image/png">` no `<head>` das três páginas (`index.html`, `aluno/index.html` e `professor/index.html`). As subpáginas referenciam o arquivo com caminho relativo `../logo.png`.
+
+---
+
 ## [2026-04-22]
 
 ### Corrigido
