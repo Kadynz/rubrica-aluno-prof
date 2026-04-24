@@ -29,7 +29,8 @@ const EVOLUCAO = {
     4: { emoji: '🚀', texto: 'Evoluiu muito', cls: 'chip-evo-4' },
 };
 
-// escapeHtml, formatarData e hoje vêm de ../shared/utils.js
+// escapeHtml, formatarData, hoje, sortByDate, corPontoNivel, labelNivelCurto,
+// validarFotoDataUrl vêm de ../shared/utils.js
 
 function mostrar(id) { document.getElementById(id).classList.add('visivel'); }
 function ocultar(id) { document.getElementById(id).classList.remove('visivel'); }
@@ -174,7 +175,7 @@ function revogarTodosObjectURLs() {
 
 async function migrarFotosLegadas() {
     if (localStorage.getItem(K_FOTOS_MIGRADO) === 'true') return;
-    const legadas = alunos.filter(a => typeof a.foto === 'string' && a.foto.startsWith('data:image/'));
+    const legadas = alunos.filter(a => validarFotoDataUrl(a.foto));
     if (!legadas.length) { localStorage.setItem(K_FOTOS_MIGRADO, 'true'); return; }
     for (const a of legadas) {
         const blob = dataUrlParaBlob(a.foto);
@@ -205,7 +206,7 @@ async function prepararBackendFotos() {
         fotosBackend = 'localStorage';
         fotosManifest.clear();
         alunos.forEach(a => {
-            if (typeof a.foto === 'string' && a.foto.startsWith('data:image/')) fotosManifest.add(a.id);
+            if (validarFotoDataUrl(a.foto)) fotosManifest.add(a.id);
         });
     }
 }
@@ -227,7 +228,7 @@ function corDoAluno(id) {
 function alunoTemFoto(aluno) {
     if (!aluno) return false;
     if (fotosManifest.has(aluno.id)) return true;
-    return typeof aluno.foto === 'string' && aluno.foto.startsWith('data:image/');
+    return validarFotoDataUrl(aluno.foto);
 }
 
 function renderAvatar(aluno) {
@@ -422,6 +423,7 @@ async function setFotoAluno(alunoId, fotoDataUrl) {
 
     // Escrita no IndexedDB (backend preferido).
     if (fotosBackend === 'idb') {
+        if (!validarFotoDataUrl(fotoDataUrl)) { alert('Imagem inválida.'); return false; }
         const blob = dataUrlParaBlob(fotoDataUrl);
         if (!blob) { alert('Imagem inválida.'); return false; }
         try {
@@ -444,6 +446,7 @@ async function setFotoAluno(alunoId, fotoDataUrl) {
     }
 
     // Fallback legado: foto inline em localStorage (navegadores sem IndexedDB).
+    if (!validarFotoDataUrl(fotoDataUrl)) { alert('Imagem inválida.'); return false; }
     const previa = alunos[idx].foto;
     alunos[idx] = { ...alunos[idx], foto: fotoDataUrl };
     try {
@@ -544,7 +547,6 @@ function adicionarTurma() {
 document.getElementById('novaTurma').addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); adicionarTurma(); }
 });
-// Attach to Adicionar button (removed inline onclick from HTML)
 document.getElementById('btnNovaTurma').addEventListener('click', adicionarTurma);
 
 function excluirTurma(id) {
@@ -591,8 +593,7 @@ function renderTurmas() {
         el.innerHTML = '<div class="aviso" aria-live="polite"><i class="fas fa-school"></i><br>Nenhuma turma cadastrada.</div>';
         return;
     }
-    
-    // DB Optimizer: Pre-calculate counts (prevent N+1 inside map)
+
     const countMap = alunos.reduce((acc, a) => {
         acc[a.turmaId] = (acc[a.turmaId] || 0) + 1;
         return acc;
@@ -610,7 +611,6 @@ function renderTurmas() {
     }).join('');
 }
 
-// Event Delegation for Turmas
 document.getElementById('listaTurmas').addEventListener('click', e => {
     const delBtn = e.target.closest('.item-del');
     const item = e.target.closest('.turma-item');
@@ -682,8 +682,7 @@ function renderAlunos() {
         el.innerHTML = '<div class="aviso" aria-live="polite"><i class="fas fa-user-slash"></i><br>Nenhum aluno nesta turma.</div>';
         return;
     }
-    
-    // DB Optimizer: pre-calculate evaluation counts
+
     const countMap = avaliacoes.reduce((acc, av) => {
         acc[av.alunoId] = (acc[av.alunoId] || 0) + 1;
         return acc;
@@ -702,7 +701,6 @@ function renderAlunos() {
     carregarImagensLazy(el);
 }
 
-// Event Delegation for Alunos
 document.getElementById('listaAlunos').addEventListener('click', e => {
     const avatarBtn = e.target.closest('.aluno-avatar');
     const delBtn = e.target.closest('.item-del');
@@ -746,7 +744,7 @@ document.getElementById('formAvaliacao').addEventListener('submit', e => {
     } else {
         avaliacoes.push({ id: Date.now(), alunoId: alunoAtivo, date, lesson, desempenho, aula, evolucao });
     }
-    avaliacoes.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    sortByDate(avaliacoes);
     salvar(true);
     renderAlunos();
     renderHistorico();
@@ -826,7 +824,6 @@ function renderHistorico() {
     }).join('');
 }
 
-// Event Delegation for Historico
 document.getElementById('listaHistorico').addEventListener('click', e => {
     const editBtn = e.target.closest('.btn-edit');
     const delBtn = e.target.closest('.btn-del-reg');
@@ -837,7 +834,6 @@ document.getElementById('listaHistorico').addEventListener('click', e => {
     }
 });
 
-// History Filters
 function debounce(func, delay) {
     let timeout;
     return function(...args) {
@@ -927,11 +923,7 @@ function renderGraficoLinha() {
             borderColor: cor,
             backgroundColor: cor + '22',
             tension: 0.2,
-            pointBackgroundColor: datas.map(d => {
-                const v = avMap[d];
-                if (!v) return 'transparent';
-                return v === 1 ? '#991b1b' : v === 2 ? '#b45309' : v === 3 ? '#0369a1' : '#166534';
-            }),
+            pointBackgroundColor: datas.map(d => corPontoNivel(avMap[d])),
             pointBorderColor: 'white',
             pointRadius: datas.map(d => avMap[d] ? 5 : 0),
             pointHoverRadius: 7,
@@ -950,7 +942,7 @@ function renderGraficoLinha() {
             scales: {
                 y: {
                     min: 0.5, max: 4.5,
-                    ticks: { stepSize: 1, font: { size: 10 }, callback: v => ({ 1: 'Inic.', 2: 'Bás.', 3: 'Prof.', 4: 'Avanç.' }[v] || '') },
+                    ticks: { stepSize: 1, font: { size: 10 }, callback: labelNivelCurto },
                     title: { display: true, text: 'Desempenho', font: { size: 10 } }
                 },
                 x: { ticks: { maxRotation: 40, font: { size: 10 } } }
@@ -1019,7 +1011,7 @@ function renderGraficoQuadrante() {
                 y: {
                     min: 0.5, max: 4.5,
                     title: { display: true, text: 'Desempenho médio', font: { size: 10 } },
-                    ticks: { stepSize: 1, font: { size: 10 }, callback: v => ({ 1: 'Inic.', 2: 'Bás.', 3: 'Prof.', 4: 'Avanç.' }[v] || '') }
+                    ticks: { stepSize: 1, font: { size: 10 }, callback: labelNivelCurto }
                 }
             },
             plugins: {
@@ -1277,12 +1269,12 @@ function gerarCSV(tList, aList, avList) {
     const mapaAlunos = {};
     aList.forEach(a => mapaAlunos[a.id] = { nome: a.nome, turmaId: a.turmaId });
     
-    const sortedAv = [...avList].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const sortedAv = sortByDate([...avList]);
     
     const escapeCSV = (str) => {
         if (str == null) return "";
         const s = String(str);
-        if (s.includes(";") || s.includes('"') || s.includes("\n")) {
+        if (/[;"\r\n]/.test(s)) {
             return `"${s.replace(/"/g, '""')}"`;
         }
         return s;
@@ -1324,7 +1316,7 @@ async function limparTodasFotos() {
 async function importarFotosJSON(alunosImportados) {
     if (fotosBackend !== 'idb') return; // fallback legado mantém foto inline em alunos
     for (const a of alunosImportados) {
-        if (typeof a.foto !== 'string' || !a.foto.startsWith('data:image/')) continue;
+        if (!validarFotoDataUrl(a.foto)) continue;
         const blob = dataUrlParaBlob(a.foto);
         if (!blob) continue;
         try {
@@ -1344,34 +1336,54 @@ document.getElementById('fileImport').addEventListener('change', e => {
     reader.onload = async ev => {
         const isCsv = file.name.toLowerCase().endsWith('.csv');
         try {
-            if (isCsv) {
-                await importarCSV(ev.target.result);
-            } else {
-                await importarJSON(ev.target.result);
-            }
+            if (isCsv) await importarCSV(ev.target.result);
+            else await importarJSON(ev.target.result);
+        } catch (err) {
+            console.error('[Import] falha inesperada', err);
+            alert('Falha ao processar o arquivo. Verifique a integridade e tente novamente.');
         } finally {
-            e.target.value = ''; // Reset input
+            e.target.value = '';
         }
+    };
+    reader.onerror = () => {
+        alert('Não foi possível ler o arquivo.');
+        e.target.value = '';
     };
     reader.readAsText(file);
 });
 
-// Parser CSV simples (delimitador ';') com suporte a aspas escapadas por "".
+// Parser CSV (delimitador ';') com suporte a "" como aspas escapadas dentro
+// de campos entre aspas. Normaliza CRLF → LF.
 function parseCSV(txt) {
-    let p = '', row = [''], ret = [row], i = 0, r = 0, s = !0, l;
-    for (l of txt) {
-        if ('"' === l) {
-            if (s && l === p) row[i] += l;
-            s = !s;
-        } else if (';' === l && s) l = row[++i] = '';
-        else if ('\n' === l && s) {
-            if ('\r' === p) row[i] = row[i].slice(0, -1);
-            row = ret[++r] = [l = '']; i = 0;
-        } else row[i] += l;
-        p = l;
+    const rows = [];
+    let row = [''];
+    let col = 0;
+    let insideQuotes = false;
+    let prev = '';
+
+    for (const ch of txt) {
+        if (ch === '"') {
+            // "" (dois quotes seguidos) dentro de quoted field → um quote literal.
+            // O primeiro " já saiu do estado "inside", então no segundo a flag é false
+            // e prev === '"': este é o momento de emitir o literal.
+            if (!insideQuotes && prev === '"') row[col] += '"';
+            insideQuotes = !insideQuotes;
+        } else if (ch === ';' && !insideQuotes) {
+            row.push('');
+            col++;
+        } else if (ch === '\n' && !insideQuotes) {
+            if (prev === '\r') row[col] = row[col].slice(0, -1);
+            rows.push(row);
+            row = [''];
+            col = 0;
+        } else {
+            row[col] += ch;
+        }
+        prev = ch;
     }
-    if (ret[ret.length - 1].length === 1 && ret[ret.length - 1][0] === '') ret.pop();
-    return ret;
+    // Última linha (se o arquivo não termina com \n)
+    if (row.length > 1 || row[0] !== '') rows.push(row);
+    return rows;
 }
 
 function intNoIntervalo(v, min, max, fallback) {
@@ -1512,9 +1524,16 @@ async function importarJSON(rawText) {
             });
             localStorage.setItem(K_FOTOS_MIGRADO, 'true');
         } else {
-            alunos = data.alunos;
+            // Sem IDB: sanear campo foto inválido antes de persistir.
+            alunos = data.alunos.map(a => {
+                if (a.foto !== undefined && !validarFotoDataUrl(a.foto)) {
+                    const { foto, ...rest } = a;
+                    return rest;
+                }
+                return a;
+            });
             alunos.forEach(a => {
-                if (typeof a.foto === 'string' && a.foto.startsWith('data:image/')) fotosManifest.add(a.id);
+                if (validarFotoDataUrl(a.foto)) fotosManifest.add(a.id);
             });
         }
         salvar(true);
@@ -1550,16 +1569,8 @@ if (sessionStorage.getItem(K_SESSION) === 'true' && lerCreds()) {
     configurarTelaAuth(lerCreds() ? 'login' : 'signup');
 }
 
-// Tema: o toggle + persistência são geridos em ../shared/theme.js.
-// Aqui só atualizamos as defaults do Chart.js e re-renderizamos os gráficos.
-function aplicarTemaAosGraficos() {
-    const isDark = document.body.getAttribute('data-theme') === 'dark';
-    Chart.defaults.color = isDark ? '#f8fafc' : '#0f172a';
-    Chart.defaults.borderColor = isDark ? 'rgba(148,163,184,0.25)' : 'rgba(100,116,139,0.15)';
-}
-aplicarTemaAosGraficos();
-
+// Tema (toggle + defaults do Chart.js) em ../shared/theme.js.
+// Aqui só re-renderizamos gráficos se houver sessão ativa.
 document.addEventListener('themechange', () => {
-    aplicarTemaAosGraficos();
     if (sessionStorage.getItem(K_SESSION) === 'true') renderGraficos();
 });

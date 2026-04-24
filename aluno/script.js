@@ -15,7 +15,8 @@ const AVALIACAO = {
     4: { emoji: '🟢', texto: 'Excelente', cls: 'chip-4' },
 };
 
-// escapeHtml, formatarData e hoje vêm de ../shared/utils.js
+// escapeHtml, formatarData, hoje, sortByDate, corPontoNivel, labelNivelCurto
+// vêm de ../shared/utils.js
 
 function carregar() {
     try {
@@ -25,16 +26,12 @@ function carregar() {
     } catch {
         registros = [];
     }
-    ordenar();
+    sortByDate(registros);
     renderizar();
 }
 
 function salvar() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
-}
-
-function ordenar() {
-    registros.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
 function renderizarLista() {
@@ -44,7 +41,6 @@ function renderizarLista() {
         return;
     }
     
-    // Using event delegation so no inline onclicks are used (Security / Maintainability)
     container.innerHTML = [...registros].reverse().map(r => {
         const d = DESEMPENHO[r.studentLevel] || DESEMPENHO[1];
         const a = AVALIACAO[r.classLevel] || AVALIACAO[1];
@@ -66,7 +62,6 @@ function renderizarLista() {
     }).join('');
 }
 
-// Event Delegation for action buttons
 document.getElementById('listaRegistros').addEventListener('click', e => {
     const editBtn = e.target.closest('.btn-edit');
     const delBtn = e.target.closest('.btn-del');
@@ -99,9 +94,7 @@ function atualizarEstatisticas() {
 
     const labels = registros.map(r => formatarData(r.date));
     const data = registros.map(r => r.studentLevel);
-    const ptColors = data.map(v =>
-        v === 1 ? '#991b1b' : v === 2 ? '#b45309' : v === 3 ? '#0369a1' : '#166534'
-    );
+    const ptColors = data.map(corPontoNivel);
 
     const ctx = document.getElementById('evolucaoChart').getContext('2d');
     if (chartInstance) chartInstance.destroy();
@@ -133,7 +126,7 @@ function atualizarEstatisticas() {
                     ticks: {
                         stepSize: 1,
                         font: { size: 10 },
-                        callback: v => ({ 1: 'Inic.', 2: 'Bás.', 3: 'Prof.', 4: 'Avanç.' }[v] || '')
+                        callback: labelNivelCurto
                     },
                     title: { display: true, text: 'Nível', font: { size: 10 } }
                 },
@@ -169,7 +162,7 @@ function adicionarRegistro(lessonName, date, studentLevel, classLevel) {
         studentLevel: +studentLevel,
         classLevel: +classLevel
     });
-    ordenar();
+    sortByDate(registros);
     salvar();
     renderizar();
     limparForm();
@@ -185,7 +178,7 @@ function atualizarRegistro(id, lessonName, date, studentLevel, classLevel) {
             studentLevel: +studentLevel,
             classLevel: +classLevel
         };
-        ordenar();
+        sortByDate(registros);
         salvar();
         renderizar();
     }
@@ -228,7 +221,6 @@ document.getElementById('avaliacaoForm').addEventListener('submit', e => {
     const sl = document.getElementById('studentLevel').value;
     const cl = document.getElementById('classLevel').value;
 
-    // Validation
     if (!lessonName) {
         alert('Informe o nome da aula.');
         return;
@@ -244,20 +236,9 @@ document.getElementById('avaliacaoForm').addEventListener('submit', e => {
 
 document.getElementById('btnCancelar').addEventListener('click', limparForm);
 
-// Initialization
 document.getElementById('lessonDate').value = hoje();
 carregar();
 
-// Tema: o toggle + persistência são geridos em ../shared/theme.js.
-// Aqui só atualizamos as defaults do Chart.js e re-renderizamos o gráfico.
-function aplicarTemaAosGraficos() {
-    const isDark = document.body.getAttribute('data-theme') === 'dark';
-    Chart.defaults.color = isDark ? '#f8fafc' : '#0f172a';
-    Chart.defaults.borderColor = isDark ? 'rgba(148,163,184,0.25)' : 'rgba(100,116,139,0.15)';
-}
-aplicarTemaAosGraficos();
-
-document.addEventListener('themechange', () => {
-    aplicarTemaAosGraficos();
-    atualizarEstatisticas();
-});
+// Tema (toggle + defaults do Chart.js) em ../shared/theme.js.
+// Aqui só re-renderizamos o gráfico quando o tema muda.
+document.addEventListener('themechange', atualizarEstatisticas);

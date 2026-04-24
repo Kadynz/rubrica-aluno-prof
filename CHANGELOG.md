@@ -7,6 +7,24 @@ e este projeto utiliza o histórico de commits como referência cronológica.
 
 ---
 
+## [2026-04-24]
+
+### Segurança
+- **SRI em recursos CDN** — `integrity="sha384-…"` adicionado às tags `<script>` e `<link>` que carregam Chart.js (`jsdelivr`) e FontAwesome (`cdnjs`) em `aluno/index.html` e `professor/index.html`. Se o CDN servir bytes diferentes dos hashes fixos, o navegador bloqueia o recurso.
+- **Validação estrita de data URL de fotos** — novo `validarFotoDataUrl` em `shared/utils.js` (regex `^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$`). `alunoTemFoto`, `setFotoAluno`, `migrarFotosLegadas`, `importarFotosJSON` e a ramificação sem IDB de `importarJSON` agora rejeitam `data:image/svg+xml` e qualquer MIME/variante fora da lista permitida — a importação sanea o campo `foto` antes de persistir.
+- **`reader.onerror` e `try/catch` no fluxo de importação** — falhas de leitura ou exceções inesperadas em `importarCSV`/`importarJSON` agora notificam o usuário em vez de falharem silenciosamente (`fileImport` change handler em `professor/script.js`).
+
+### Alterado
+- **Utilitários compartilhados** — `shared/utils.js` ganhou `sortByDate`, `corPontoNivel`, `labelNivelCurto` e `validarFotoDataUrl`. `aluno/script.js` e `professor/script.js` passaram a consumir os helpers; duplicações de paleta de pontos, labels de ticks e ordenação por data foram removidas.
+- **`aplicarTemaAosGraficos` centralizado** — a função migrou de `aluno/script.js` e `professor/script.js` para `shared/theme.js`, que agora aplica os defaults do Chart.js automaticamente no *load* e em cada `themechange`. Os portais só mantêm seu próprio *listener* para re-renderizar o gráfico.
+- **`parseCSV` reescrito para legibilidade** — nomes descritivos (`insideQuotes`, `row`, `col`, `prev`) substituíram as variáveis de uma letra e `!0`/`!s`. Comportamento preservado (validado contra o original em 11 casos, incluindo aspas escapadas `""`, CRLF e quebra de linha dentro de campo entre aspas).
+- **`escapeCSV` cobre `\r`** — campos com carriage return isolado agora são corretamente envolvidos em aspas.
+
+### Removido
+- Comentários narrativos/históricos (`// Using event delegation so no inline onclicks are used`, `// DB Optimizer: Pre-calculate counts`, `// Attach to Adicionar button (removed inline onclick from HTML)`, `// History Filters`, `// Validation`, `// Initialization`) em `aluno/script.js` e `professor/script.js` — o *porquê* já está no commit; o *o quê* é óbvio no código.
+
+---
+
 ## [2026-04-23]
 
 ### Adicionado
