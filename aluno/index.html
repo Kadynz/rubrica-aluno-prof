@@ -18,9 +18,16 @@
 
     <!-- Rubrica -->
     <div class="card">
-        <div class="card-header">
-            <i class="fas fa-graduation-cap"></i>
-            <h2>Meu Portfólio &nbsp;<span style="font-size:0.88rem;font-weight:400;">Auto-avaliação do aluno</span></h2>
+        <div class="card-header" style="justify-content:space-between; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; align-items:center; gap:12px; min-width:0;">
+                <i class="fas fa-graduation-cap"></i>
+                <h2>Meu Portfólio &nbsp;<span style="font-size:0.88rem;font-weight:400;">Auto-avaliação do aluno</span></h2>
+            </div>
+            <div class="acoes-dados" style="display:flex; gap:8px;">
+                <button id="btnExport" class="btn btn-sm" style="background:transparent; color:var(--text-main); border:none; padding: 6px 10px; font-size: 0.85rem; min-width: 105px; display:inline-flex; align-items:center; justify-content:center; gap:10px;"><i class="fas fa-download fa-fw"></i> Exportar</button>
+                <button id="btnImport" class="btn btn-sm" style="background:transparent; color:var(--text-main); border:none; padding: 6px 10px; font-size: 0.85rem; min-width: 105px; display:inline-flex; align-items:center; justify-content:center; gap:10px;"><i class="fas fa-upload fa-fw"></i> Importar</button>
+                <input type="file" id="fileImport" accept=".json,.csv" style="display:none;">
+            </div>
         </div>
         <div class="badge-rubrica">
             <div class="rubrica-title"><i class="fas fa-star"></i> Rubrica de avaliação</div>
@@ -119,6 +126,27 @@
         </div>
         <div id="listaRegistros">
             <div class="empty-message" aria-live="polite"><i class="fas fa-clipboard-list"></i><br>Nenhum registro ainda.</div>
+        </div>
+    </div>
+
+    <!-- Modal Exportação -->
+    <div id="modalExport" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
+        <div class="card" style="width: 100%; max-width: 400px; margin: 0;">
+            <div class="card-header">
+                <i class="fas fa-file-export"></i>
+                <h2>Exportar Dados</h2>
+            </div>
+            <div class="form-group" style="margin-top:15px;">
+                <label for="exportFormato"><i class="fas fa-file-alt"></i> Formato</label>
+                <select id="exportFormato" aria-label="Formato do arquivo" style="margin-top: 5px;">
+                    <option value="json">JSON (Para restauração/backup)</option>
+                    <option value="csv">CSV (Para análise no Excel)</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button id="btnConfirmExport" class="btn btn-primary" style="flex:1;"><i class="fas fa-check"></i> Exportar</button>
+                <button id="btnCancelExport" class="btn btn-secondary btn-sm" style="flex:1;"><i class="fas fa-times"></i> Cancelar</button>
+            </div>
         </div>
     </div>
 

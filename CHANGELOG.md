@@ -7,6 +7,17 @@ e este projeto utiliza o histórico de commits como referência cronológica.
 
 ---
 
+## [2026-04-25]
+
+### Adicionado
+- **Exportação e importação de dados no portal do aluno** — botões "Exportar" e "Importar" no cabeçalho da Rubrica (espelhando o portal do professor) e modal `#modalExport` com seletor de formato. Suporta JSON (`{ registros: [...] }`, com `id`, `lessonName`, `date`, `studentLevel`, `classLevel`) e CSV (`Data;Aula;Meu Desempenho;Avaliação da Aula`, separador `;`, BOM UTF-8 para abrir no Excel sem mojibake). A importação saneia entradas (`intNoIntervalo` clampa níveis em `[1,4]` com fallback `3`; `dataIsoValida` exige `YYYY-MM-DD`), exige confirmação antes de substituir os registros e isola linhas inválidas reportando-as ao final em vez de abortar. Helpers `parseCSV`, `escapeCSV`, `intNoIntervalo`, `dataIsoValida` e `baixarArquivo` foram replicados localmente em `aluno/script.js` (sem refatoração para `shared/` neste commit, evitando regressão no portal do professor).
+
+### Corrigido
+- **`70ad970` — fix(index): corrige transbordo horizontal do container no mobile**
+  `.container` em `index.html` usava `width: 90%` + `padding: 40px` sem `box-sizing: border-box`. No modelo padrão (`content-box`) o padding é somado à largura, fazendo o card ocupar `viewport × 0.9 + 80px` — em qualquer tela com menos de 800px de largura (ou seja, todo dispositivo móvel) o container transbordava o viewport, e como o body usa `align-items: center`, o transbordo era distribuído pelos dois lados, cortando os paddings e dando aparência de desalinhamento. Adicionado `box-sizing: border-box` para incluir o padding nos 90%, em paridade com o `* { box-sizing: border-box }` global já usado em `aluno/styles.css` e `professor/styles.css`.
+
+---
+
 ## [2026-04-24]
 
 ### Segurança
