@@ -5,7 +5,7 @@
 (function () {
     const KEY = 'theme';
 
-    const inicial = localStorage.getItem(KEY) || 'light';
+    const inicial = localStorage.getItem(KEY) || 'dark';
     if (inicial === 'dark') document.body.setAttribute('data-theme', 'dark');
 
     function estaEscuro() {
