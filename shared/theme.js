@@ -31,9 +31,12 @@
         if (!btn) return;
 
         const atualizarIcone = () => {
-            btn.innerHTML = estaEscuro()
+            const escuro = estaEscuro();
+            btn.innerHTML = escuro
                 ? '<i class="fas fa-sun"></i>'
                 : '<i class="fas fa-moon"></i>';
+            btn.setAttribute('aria-pressed', String(escuro));
+            btn.setAttribute('aria-label', escuro ? 'Tema escuro ativo. Alternar para tema claro' : 'Tema claro ativo. Alternar para tema escuro');
         };
         atualizarIcone();
 

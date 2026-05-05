@@ -7,6 +7,36 @@ e este projeto utiliza o histórico de commits como referência cronológica.
 
 ---
 
+## [Unreleased]
+
+### Adicionado
+- **Portal do aluno: fluxo de autoavaliação ampliado** — selects de níveis substituídos por chips visuais sem pré-seleção, observação opcional por registro, autocomplete de aulas recentes, atalhos de data, rascunho em `sessionStorage`, campo "Meu nome" persistido em `localStorage`, link de volta ao início e aviso de backup local.
+- **Histórico do aluno mais navegável** — filtros por aula/data, ordenação alternável, estado vazio com CTA, destaque visual do item em edição, observações recolhidas nos cards e exclusão com toast + desfazer em vez de `confirm()`.
+- **Gráfico e estatísticas do aluno** — gráfico agora permite período de 30/90 dias/tudo e plota tanto desempenho quanto avaliação da aula; cartões exibem tendência, sequência de registros e capitalização consistente; seção de destaques resume melhores/piores pontos.
+- **Importação/exportação do aluno mais segura** — exportação por período/filtros, CSV com observação, JSON com metadados, importação com opção de mesclar ou substituir, deduplicação na mesclagem e mensagens por toast. Tudo permanece em `localStorage`/`sessionStorage`.
+- **PWA instalável** — adicionado `manifest.webmanifest` e `sw.js` mínimo para o app poder ser instalado e voltar a abrir offline depois de carregado.
+- **Metas opcionais do aluno** — nova seção "Minhas metas" salva em `localStorage`, acompanha progresso por aula/assunto, mostra barra de avanço e dispara toast quando a meta é atingida.
+- **Resumo semanal do aluno** — novo bloco "Esta semana" mostra quantidade de aulas, médias, melhor momento e volume de reflexões na semana corrente.
+- **Cruzamento desempenho × aula** — mini-quadrante do aluno compara desempenho próprio com percepção da aula e destaca a média nas aulas marcadas como excelentes.
+
+### Alterado
+- **Acessibilidade do tema compartilhado** — botão de tema passa a anunciar estado com `aria-pressed` e rótulo contextual.
+- **Rubrica do aluno colapsável** — critérios de rubrica agora ficam em `<details>` com estado salvo em `sessionStorage`; em primeiro acesso, abre no desktop e fica recolhida no mobile para reduzir rolagem até o formulário.
+- **Rubrica do aluno por sessão** — o estado aberto/fechado da rubrica passou de `localStorage` para `sessionStorage`, evitando carregar preferência de outro aluno em dispositivo compartilhado.
+- **Gráfico imprimível do aluno** — o card de evolução agora gera uma versão SVG vetorial para `@media print`, evitando depender do `<canvas>` do Chart.js na impressão.
+- **Exportação com resumo de filtros** — a opção "Filtros do histórico" no modal informa contagem e período coberto pelos registros filtrados, e esse resumo é atualizado ao vivo quando os filtros mudam.
+- **JSON de backup do aluno** — exportação JSON passa a incluir também as metas locais; importação JSON mescla ou substitui metas quando o arquivo traz esse campo.
+- **Deploy do GitLab Pages** — artefato publicado passa a incluir `logo.png`, `manifest.webmanifest` e `sw.js`, necessários para ícone, manifesto e funcionamento offline.
+
+### Corrigido
+- **Data local compartilhada** — `hoje()` em `shared/utils.js` agora usa data local em vez de `toISOString()`, evitando dia incorreto perto da meia-noite em fusos como America/Sao_Paulo. Isso corrige também o portal do professor, que consome o helper compartilhado.
+- **Histórico menos verboso para leitor de tela** — `aria-live` saiu da lista inteira e ficou no resumo do histórico, evitando reanúncio de todos os cards ao filtrar/ordenar.
+- **Duplicidade manual aula+data** — salvar ou atualizar bloqueia outro registro da mesma aula na mesma data, comparando sem diferenciar maiúsculas/minúsculas ou acentos.
+- **Duplicidade com contexto visual** — ao tentar salvar duplicado, o histórico filtra, rola e destaca o registro existente.
+- **Marcos combinados** — toasts de marcos agora concatenam mensagens quando mais de uma conquista acontece no mesmo salvamento.
+
+---
+
 ## [2026-04-25]
 
 ### Adicionado

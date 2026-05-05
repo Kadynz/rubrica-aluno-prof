@@ -19,8 +19,13 @@ function formatarData(iso) {
     return `${d}/${m}/${y}`;
 }
 
+function isoLocal(date = new Date()) {
+    const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return d.toISOString().slice(0, 10);
+}
+
 function hoje() {
-    return new Date().toISOString().slice(0, 10);
+    return isoLocal();
 }
 
 function sortByDate(arr) {

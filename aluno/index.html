@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
     <title>Meu Portfólio | Auto-avaliação do Aluno</title>
     <link rel="icon" type="image/png" href="../logo.png">
+    <link rel="manifest" href="../manifest.webmanifest">
+    <meta name="theme-color" content="#3b82f6">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
           integrity="sha384-5e2ESR8Ycmos6g3gAKr1Jvwye8sW4U1u/cAKulfVJnkakCcMqhOudbtPnvJ+nbv7"
           crossorigin="anonymous" referrerpolicy="no-referrer">
@@ -14,23 +16,40 @@
             crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
-<div class="container">
+<main class="container">
 
-    <!-- Rubrica -->
-    <div class="card">
-        <div class="card-header" style="justify-content:space-between; flex-wrap:wrap; gap:10px;">
-            <div style="display:flex; align-items:center; gap:12px; min-width:0;">
+    <!-- Rubrica / identidade -->
+    <section class="card card-intro" aria-labelledby="tituloAluno">
+        <div class="card-header header-with-actions">
+            <div class="header-title">
                 <i class="fas fa-graduation-cap"></i>
-                <h2>Meu Portfólio &nbsp;<span style="font-size:0.88rem;font-weight:400;">Auto-avaliação do aluno</span></h2>
+                <div>
+                    <a class="back-link" href="../"><i class="fas fa-arrow-left"></i> Voltar para o início</a>
+                    <h1 id="tituloAluno">Meu Portfólio</h1>
+                    <span class="subtitle">Auto-avaliação do aluno</span>
+                </div>
             </div>
-            <div class="acoes-dados" style="display:flex; gap:8px;">
-                <button id="btnExport" class="btn btn-sm" style="background:transparent; color:var(--text-main); border:none; padding: 6px 10px; font-size: 0.85rem; min-width: 105px; display:inline-flex; align-items:center; justify-content:center; gap:10px;"><i class="fas fa-download fa-fw"></i> Exportar</button>
-                <button id="btnImport" class="btn btn-sm" style="background:transparent; color:var(--text-main); border:none; padding: 6px 10px; font-size: 0.85rem; min-width: 105px; display:inline-flex; align-items:center; justify-content:center; gap:10px;"><i class="fas fa-upload fa-fw"></i> Importar</button>
-                <input type="file" id="fileImport" accept=".json,.csv" style="display:none;">
+            <div class="acoes-dados">
+                <button id="btnExport" class="btn btn-ghost btn-sm" type="button"><i class="fas fa-download fa-fw"></i> Exportar</button>
+                <button id="btnImport" class="btn btn-ghost btn-sm" type="button"><i class="fas fa-upload fa-fw"></i> Importar</button>
+                <input type="file" id="fileImport" accept=".json,.csv">
             </div>
         </div>
-        <div class="badge-rubrica">
-            <div class="rubrica-title"><i class="fas fa-star"></i> Rubrica de avaliação</div>
+
+        <div class="identity-grid">
+            <div class="form-group compact">
+                <label for="studentName"><i class="fas fa-user"></i> Meu nome</label>
+                <input type="text" id="studentName" placeholder="Ex: Laís" maxlength="60" autocomplete="name">
+            </div>
+            <p class="local-note"><i class="fas fa-floppy-disk"></i> Seus dados ficam só neste navegador. Exporte um backup periodicamente.</p>
+        </div>
+
+        <details id="rubricaDetails" class="rubrica-details">
+            <summary class="rubrica-summary">
+                <span><i class="fas fa-star"></i> Rubrica de avaliação</span>
+                <small>ver critérios</small>
+            </summary>
+            <div class="badge-rubrica">
             <div class="rubrica-section-label">Desempenho do aluno</div>
             <div class="rubrica-grid">
                 <div class="nivel-item nivel-1">🔴 Nível 1<br>Iniciante</div>
@@ -38,125 +57,301 @@
                 <div class="nivel-item nivel-3">🔵 Nível 3<br>Proficiente</div>
                 <div class="nivel-item nivel-4">🟢 Nível 4<br>Avançado</div>
             </div>
-            <div class="rubrica-section-label" style="margin-top:8px;">Avaliação da aula</div>
-            <div class="rubrica-grid" style="margin-bottom:0;">
+            <div class="rubrica-section-label">Como foi a aula para mim</div>
+            <div class="rubrica-grid">
                 <div class="nivel-item nivel-1">🔴 Nível 1<br>Confusa</div>
                 <div class="nivel-item nivel-2">🟠 Nível 2<br>Regular</div>
                 <div class="nivel-item nivel-3">🔵 Nível 3<br>Boa</div>
                 <div class="nivel-item nivel-4">🟢 Nível 4<br>Excelente</div>
             </div>
-            <div class="rubrica-hint">📘 1 = com dificuldades &nbsp;|&nbsp; 🧩 2 = compreensão parcial &nbsp;|&nbsp; 💡 3 = domínio independente &nbsp;|&nbsp; 🚀 4 = aplica e ensina</div>
-        </div>
-    </div>
+            <div class="rubrica-hint">1 = com dificuldades | 2 = compreensão parcial | 3 = domínio independente | 4 = aplica e ensina</div>
+            </div>
+        </details>
+    </section>
 
     <!-- Formulário -->
-    <div class="card" id="formCard">
+    <section class="card" id="formCard" aria-labelledby="tituloRegistro">
         <div class="card-header">
             <i class="fas fa-pen-alt"></i>
-            <h2>Registrar evolução</h2>
+            <h2 id="tituloRegistro">Registrar aula</h2>
         </div>
-        <form id="avaliacaoForm">
+        <form id="avaliacaoForm" novalidate>
             <input type="hidden" id="editId">
+            <input type="hidden" id="studentLevel">
+            <input type="hidden" id="classLevel">
+
             <div class="form-group">
                 <label for="lessonName"><i class="fas fa-book-open"></i> Nome da aula / atividade</label>
-                <input type="text" id="lessonName" placeholder="Ex: Frações, Crase, Funções..." maxlength="100" required>
+                <input type="text" id="lessonName" list="lessonSuggestions" placeholder="Ex: Frações, Crase, Funções..." maxlength="100" autocomplete="off">
+                <datalist id="lessonSuggestions"></datalist>
+                <div class="field-meta">
+                    <span id="lessonNameError" class="field-error" aria-live="polite"></span>
+                    <span id="lessonNameCounter" class="counter">0/100</span>
+                </div>
             </div>
+
             <div class="form-group">
                 <label for="lessonDate"><i class="far fa-calendar-alt"></i> Data</label>
-                <input type="date" id="lessonDate" required>
-            </div>
-            <div class="double-select">
-                <div class="form-group">
-                    <label for="studentLevel"><i class="fas fa-user-check"></i> Meu desempenho</label>
-                    <select id="studentLevel">
-                        <option value="1">Nível 1 – Iniciante</option>
-                        <option value="2">Nível 2 – Básico</option>
-                        <option value="3" selected>Nível 3 – Proficiente</option>
-                        <option value="4">Nível 4 – Avançado</option>
-                    </select>
+                <div class="date-row">
+                    <input type="date" id="lessonDate">
+                    <div class="date-shortcuts" aria-label="Atalhos de data">
+                        <button type="button" class="btn btn-secondary btn-sm" data-date-shortcut="today">Hoje</button>
+                        <button type="button" class="btn btn-secondary btn-sm" data-date-shortcut="yesterday">Ontem</button>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="classLevel"><i class="fas fa-chalkboard-user"></i> Avaliação da aula</label>
-                    <select id="classLevel">
-                        <option value="1">Nível 1 – Confusa</option>
-                        <option value="2">Nível 2 – Regular</option>
-                        <option value="3" selected>Nível 3 – Boa</option>
-                        <option value="4">Nível 4 – Excelente</option>
-                    </select>
+                <div id="lessonDateError" class="field-error" aria-live="polite"></div>
+            </div>
+
+            <fieldset class="chip-field" data-field="studentLevel">
+                <legend><i class="fas fa-user-check"></i> Meu desempenho</legend>
+                <div class="chip-options" role="group" aria-labelledby="studentLevelHint">
+                    <button type="button" class="level-choice nivel-1" data-target="studentLevel" data-value="1" aria-pressed="false">
+                        <span>🔴 Nível 1</span><strong>Iniciante</strong>
+                    </button>
+                    <button type="button" class="level-choice nivel-2" data-target="studentLevel" data-value="2" aria-pressed="false">
+                        <span>🟠 Nível 2</span><strong>Básico</strong>
+                    </button>
+                    <button type="button" class="level-choice nivel-3" data-target="studentLevel" data-value="3" aria-pressed="false">
+                        <span>🔵 Nível 3</span><strong>Proficiente</strong>
+                    </button>
+                    <button type="button" class="level-choice nivel-4" data-target="studentLevel" data-value="4" aria-pressed="false">
+                        <span>🟢 Nível 4</span><strong>Avançado</strong>
+                    </button>
+                </div>
+                <p id="studentLevelHint" class="selector-hint">Escolha o nível que melhor representa sua autonomia nesta aula.</p>
+                <div id="studentLevelError" class="field-error" aria-live="polite"></div>
+            </fieldset>
+
+            <fieldset class="chip-field" data-field="classLevel">
+                <legend><i class="fas fa-chalkboard-user"></i> Como foi a aula para mim</legend>
+                <div class="chip-options" role="group" aria-labelledby="classLevelHint">
+                    <button type="button" class="level-choice nivel-1" data-target="classLevel" data-value="1" aria-pressed="false">
+                        <span>🔴 Nível 1</span><strong>Confusa</strong>
+                    </button>
+                    <button type="button" class="level-choice nivel-2" data-target="classLevel" data-value="2" aria-pressed="false">
+                        <span>🟠 Nível 2</span><strong>Regular</strong>
+                    </button>
+                    <button type="button" class="level-choice nivel-3" data-target="classLevel" data-value="3" aria-pressed="false">
+                        <span>🔵 Nível 3</span><strong>Boa</strong>
+                    </button>
+                    <button type="button" class="level-choice nivel-4" data-target="classLevel" data-value="4" aria-pressed="false">
+                        <span>🟢 Nível 4</span><strong>Excelente</strong>
+                    </button>
+                </div>
+                <p id="classLevelHint" class="selector-hint">Avalie sua experiência com a aula, não a pessoa professora.</p>
+                <div id="classLevelError" class="field-error" aria-live="polite"></div>
+            </fieldset>
+
+            <div class="form-group">
+                <label for="observation"><i class="fas fa-comment-dots"></i> Observação opcional</label>
+                <textarea id="observation" maxlength="500" rows="4" placeholder="O que travou? O que ajudou? Qual é o próximo passo?"></textarea>
+                <div class="field-meta">
+                    <span class="field-help">Aparece recolhida no histórico.</span>
+                    <span id="observationCounter" class="counter">0/500</span>
                 </div>
             </div>
+
             <div class="btn-row">
                 <button type="submit" class="btn btn-primary" id="btnSalvar"><i class="fas fa-save"></i> Salvar</button>
-                <button type="button" class="btn btn-secondary" id="btnCancelar"><i class="fas fa-times"></i> Cancelar</button>
+                <button type="button" class="btn btn-secondary" id="btnCancelar"><i class="fas fa-times"></i> Cancelar edição</button>
             </div>
         </form>
-    </div>
+    </section>
+
+    <!-- Metas -->
+    <section class="card" aria-labelledby="tituloMetas">
+        <div class="card-header">
+            <i class="fas fa-bullseye"></i>
+            <h2 id="tituloMetas">Minhas metas</h2>
+        </div>
+        <form id="goalForm" class="goal-form" novalidate>
+            <div class="form-group">
+                <label for="goalLesson"><i class="fas fa-book"></i> Aula / assunto</label>
+                <input type="text" id="goalLesson" list="lessonSuggestions" placeholder="Ex: Frações" maxlength="100" autocomplete="off">
+            </div>
+            <div class="goal-grid">
+                <div class="form-group">
+                    <label for="goalLevel"><i class="fas fa-arrow-trend-up"></i> Meta</label>
+                    <select id="goalLevel">
+                        <option value="3">Chegar ao nível 3</option>
+                        <option value="4">Chegar ao nível 4</option>
+                        <option value="2">Chegar ao nível 2</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="goalDate"><i class="far fa-calendar-check"></i> Até</label>
+                    <input type="date" id="goalDate">
+                </div>
+            </div>
+            <div id="goalError" class="field-error" aria-live="polite"></div>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Adicionar meta</button>
+        </form>
+        <div id="listaMetas" class="goal-list">
+            <div class="empty-message"><i class="fas fa-flag-checkered"></i><br>Adicione uma meta para acompanhar seu avanço por assunto.</div>
+        </div>
+    </section>
 
     <!-- Gráfico de evolução -->
-    <div class="card">
+    <section class="card" aria-labelledby="tituloEvolucao">
         <div class="card-header">
             <i class="fas fa-chart-line"></i>
-            <h2>Minha evolução</h2>
+            <h2 id="tituloEvolucao">Minha evolução</h2>
         </div>
         <div class="stats">
             <div class="stat-card">
                 <div class="stat-number" id="mediaDesempenho">—</div>
                 <div class="stat-label">Média desempenho</div>
+                <div class="stat-trend" id="tendenciaDesempenho">Sem tendência</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number" id="mediaAula">—</div>
-                <div class="stat-label">Média avaliação</div>
+                <div class="stat-label">Média das aulas</div>
+                <div class="stat-trend" id="tendenciaAula">Sem tendência</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number" id="totalRegistros">0</div>
-                <div class="stat-label">registros</div>
+                <div class="stat-label">Registros</div>
+                <div class="stat-trend" id="streakInfo">Sem sequência</div>
             </div>
         </div>
-        <div class="chart-wrapper">
-            <canvas id="evolucaoChart" role="img" aria-label="Gráfico de linha mostrando a evolução do desempenho"></canvas>
+        <div class="chart-controls" aria-label="Controles do gráfico">
+            <div class="segmented" role="group" aria-label="Período do gráfico">
+                <button type="button" data-period="30">30d</button>
+                <button type="button" data-period="90">90d</button>
+                <button type="button" data-period="all">Tudo</button>
+            </div>
+            <div class="series-controls" aria-label="Séries do gráfico">
+                <label><input type="checkbox" id="showDesempenho" checked> Desempenho</label>
+                <label><input type="checkbox" id="showAula" checked> Aula</label>
+            </div>
         </div>
-        <div class="chart-hint">📈 Evolução do meu desempenho ao longo das aulas</div>
-    </div>
+        <div id="emptyChart" class="empty-message chart-empty" aria-live="polite">
+            <i class="fas fa-chart-line"></i><br>Registre uma aula para ver sua evolução.
+        </div>
+        <div class="chart-wrapper" id="chartWrapper">
+            <canvas id="evolucaoChart" role="img" aria-label="Gráfico de linha mostrando a evolução do desempenho e da avaliação da aula"></canvas>
+        </div>
+        <div id="printChart" class="print-chart" aria-hidden="true"></div>
+        <div class="chart-hint">📈 Use o período e as séries para focar no que importa agora.</div>
+    </section>
+
+    <!-- Resumo semanal -->
+    <section class="card" aria-labelledby="tituloSemana">
+        <div class="card-header">
+            <i class="fas fa-calendar-week"></i>
+            <h2 id="tituloSemana">Esta semana</h2>
+        </div>
+        <div id="weeklySummary" class="weekly-summary">
+            <div class="empty-message"><i class="fas fa-calendar-plus"></i><br>Os registros desta semana aparecem aqui.</div>
+        </div>
+    </section>
+
+    <!-- Cruzamento -->
+    <section class="card" aria-labelledby="tituloQuadranteAluno">
+        <div class="card-header">
+            <i class="fas fa-chart-area"></i>
+            <h2 id="tituloQuadranteAluno">Desempenho × aula</h2>
+        </div>
+        <div id="studentQuadrant" class="student-quadrant">
+            <div class="empty-message"><i class="fas fa-table-cells-large"></i><br>Registre algumas aulas para comparar sua experiência com seu desempenho.</div>
+        </div>
+    </section>
+
+    <!-- Destaques -->
+    <section class="card" aria-labelledby="tituloDestaques">
+        <div class="card-header">
+            <i class="fas fa-lightbulb"></i>
+            <h2 id="tituloDestaques">Destaques</h2>
+        </div>
+        <div id="insights" class="insights-grid">
+            <div class="empty-message"><i class="fas fa-seedling"></i><br>Os destaques aparecem depois dos primeiros registros.</div>
+        </div>
+    </section>
 
     <!-- Histórico -->
-    <div class="card">
-        <div class="card-header">
-            <i class="fas fa-list-ul"></i>
-            <h2>Histórico de avaliações</h2>
+    <section class="card" aria-labelledby="tituloHistorico">
+        <div class="card-header history-header">
+            <div class="header-title compact-title">
+                <i class="fas fa-list-ul"></i>
+                <h2 id="tituloHistorico">Minhas aulas</h2>
+            </div>
+            <select id="sortHistorico" aria-label="Ordenar histórico">
+                <option value="recent">Mais recentes</option>
+                <option value="oldest">Mais antigas</option>
+                <option value="performance-desc">Maior desempenho</option>
+                <option value="performance-asc">Menor desempenho</option>
+                <option value="name">Nome da aula</option>
+            </select>
         </div>
+        <div class="history-tools">
+            <input type="text" id="filtroAula" placeholder="Filtrar por aula" aria-label="Filtrar por aula">
+            <input type="date" id="filtroData" aria-label="Filtrar por data">
+        </div>
+        <p id="historyHint" class="history-hint" aria-live="polite">Mostrando registros mais recentes primeiro.</p>
         <div id="listaRegistros">
-            <div class="empty-message" aria-live="polite"><i class="fas fa-clipboard-list"></i><br>Nenhum registro ainda.</div>
+            <div class="empty-message"><i class="fas fa-clipboard-list"></i><br>Nenhum registro ainda.<br><button type="button" class="btn btn-primary btn-sm" id="btnPrimeiroRegistro">Registrar primeira aula</button></div>
         </div>
-    </div>
+    </section>
 
     <!-- Modal Exportação -->
-    <div id="modalExport" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
-        <div class="card" style="width: 100%; max-width: 400px; margin: 0;">
+    <dialog id="modalExport" class="modal-dialog" aria-labelledby="exportTitle">
+        <form method="dialog" class="modal-card">
             <div class="card-header">
                 <i class="fas fa-file-export"></i>
-                <h2>Exportar Dados</h2>
+                <h2 id="exportTitle">Exportar Dados</h2>
             </div>
-            <div class="form-group" style="margin-top:15px;">
+            <div class="form-group">
                 <label for="exportFormato"><i class="fas fa-file-alt"></i> Formato</label>
-                <select id="exportFormato" aria-label="Formato do arquivo" style="margin-top: 5px;">
-                    <option value="json">JSON (Para restauração/backup)</option>
-                    <option value="csv">CSV (Para análise no Excel)</option>
+                <select id="exportFormato" aria-label="Formato do arquivo">
+                    <option value="json">JSON (backup/restauração)</option>
+                    <option value="csv">CSV (planilha)</option>
                 </select>
             </div>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button id="btnConfirmExport" class="btn btn-primary" style="flex:1;"><i class="fas fa-check"></i> Exportar</button>
-                <button id="btnCancelExport" class="btn btn-secondary btn-sm" style="flex:1;"><i class="fas fa-times"></i> Cancelar</button>
+            <div class="form-group">
+                <label for="exportPeriodo"><i class="fas fa-calendar-days"></i> Período</label>
+                <select id="exportPeriodo" aria-label="Período da exportação">
+                    <option value="all">Tudo</option>
+                    <option value="30">Últimos 30 dias</option>
+                    <option value="90">Últimos 90 dias</option>
+                    <option value="filtered">Filtros do histórico</option>
+                </select>
             </div>
-        </div>
-    </div>
+            <div class="modal-actions">
+                <button id="btnConfirmExport" class="btn btn-primary" type="button"><i class="fas fa-check"></i> Exportar</button>
+                <button id="btnCancelExport" class="btn btn-secondary" type="button"><i class="fas fa-times"></i> Cancelar</button>
+            </div>
+        </form>
+    </dialog>
 
-</div>
-<!-- Dark Mode Toggle Button -->
-<button id="btnThemeToggle" style="position: fixed; bottom: 20px; right: 20px; z-index: 10000; background: var(--bg-card); color: var(--text-main); border: 2px solid var(--border-card-sub); border-radius: 50%; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; font-size: 1.3rem; transition: 0.2s;">
+    <!-- Modal Importação -->
+    <dialog id="modalImport" class="modal-dialog" aria-labelledby="importTitle">
+        <form method="dialog" class="modal-card">
+            <div class="card-header">
+                <i class="fas fa-file-import"></i>
+                <h2 id="importTitle">Importar Dados</h2>
+            </div>
+            <p id="importSummary" class="modal-summary"></p>
+            <fieldset class="radio-stack">
+                <legend>Como aplicar?</legend>
+                <label><input type="radio" name="importMode" value="merge" checked> Mesclar com meus registros atuais</label>
+                <label><input type="radio" name="importMode" value="replace"> Substituir tudo</label>
+            </fieldset>
+            <div class="modal-actions">
+                <button id="btnConfirmImport" class="btn btn-primary" type="button"><i class="fas fa-check"></i> Importar</button>
+                <button id="btnCancelImport" class="btn btn-secondary" type="button"><i class="fas fa-times"></i> Cancelar</button>
+            </div>
+        </form>
+    </dialog>
+
+</main>
+
+<button id="btnThemeToggle" aria-label="Alternar tema claro/escuro">
     <i class="fas fa-moon"></i>
 </button>
 
-<footer>Auto-avaliação do aluno</footer>
+<div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+<footer>Auto-avaliação do aluno · funciona sem internet depois de carregado</footer>
 
 <script src="../shared/utils.js"></script>
 <script src="../shared/theme.js"></script>

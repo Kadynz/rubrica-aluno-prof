@@ -1,0 +1,19 @@
+{
+  "name": "Rubrica de Auto-avaliação",
+  "short_name": "Rubrica",
+  "description": "Portfólio local para registrar aulas, metas e evolução por rubrica.",
+  "start_url": "aluno/",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#3b82f6",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "877x877",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
