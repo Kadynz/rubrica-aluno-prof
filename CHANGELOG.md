@@ -10,6 +10,9 @@ e este projeto utiliza o histórico de commits como referência cronológica.
 ## [Unreleased]
 
 ### Adicionado
+- **Matérias e aulas no portal do aluno** — novo catálogo local em `portfolio_aluno_subjects_v1`, com criação de matérias, criação de aulas dentro da matéria ativa e cadastro automático de aula digitada ao salvar uma avaliação. Registros passam a guardar `subjectName` junto de `lessonName`; registros antigos sem matéria são migrados para `Geral`.
+- **Gráfico interativo em modal no portal do aluno** — o gráfico pequeno foi substituído por botão "Ver gráfico", abrindo um `dialog` quase tela cheia com backdrop em blur, fechamento por botão/Esc/backdrop e filtros por matéria, aula, datas, séries e tipo de gráfico (`line`, `bar`, barra horizontal, pizza, donut e radar).
+- **Backup pré-migração de dados do aluno** — antes de gravar a primeira migração para matérias, o JSON antigo de `portfolio_aluno_v1` é preservado em `portfolio_aluno_backup_pre_materias_v1`.
 - **Portal do aluno: fluxo de autoavaliação ampliado** — selects de níveis substituídos por chips visuais sem pré-seleção, observação opcional por registro, autocomplete de aulas recentes, atalhos de data, rascunho em `sessionStorage`, campo "Meu nome" persistido em `localStorage`, link de volta ao início e aviso de backup local.
 - **Histórico do aluno mais navegável** — filtros por aula/data, ordenação alternável, estado vazio com CTA, destaque visual do item em edição, observações recolhidas nos cards e exclusão com toast + desfazer em vez de `confirm()`.
 - **Gráfico e estatísticas do aluno** — gráfico agora permite período de 30/90 dias/tudo e plota tanto desempenho quanto avaliação da aula; cartões exibem tendência, sequência de registros e capitalização consistente; seção de destaques resume melhores/piores pontos.
@@ -20,6 +23,9 @@ e este projeto utiliza o histórico de commits como referência cronológica.
 - **Cruzamento desempenho × aula** — mini-quadrante do aluno compara desempenho próprio com percepção da aula e destaca a média nas aulas marcadas como excelentes.
 
 ### Alterado
+- **Histórico, metas e sugestões do aluno por matéria** — histórico passa a exibir matéria + aula e ganha filtro por matéria; metas aceitam matéria opcional; sugestões de aula são filtradas pela matéria selecionada.
+- **Importação/exportação do aluno com matérias** — JSON de backup passa a incluir `materias`; CSV exportado passa a ter coluna `Matéria`; CSV antigo sem essa coluna continua importando e cai na matéria `Geral`.
+- **Exclusão de matéria preserva histórico** — remover matéria a deixa inativa no catálogo sem apagar registros existentes; aulas da matéria excluída deixam de aparecer como opções ativas.
 - **Acessibilidade do tema compartilhado** — botão de tema passa a anunciar estado com `aria-pressed` e rótulo contextual.
 - **Rubrica do aluno colapsável** — critérios de rubrica agora ficam em `<details>` com estado salvo em `sessionStorage`; em primeiro acesso, abre no desktop e fica recolhida no mobile para reduzir rolagem até o formulário.
 - **Rubrica do aluno por sessão** — o estado aberto/fechado da rubrica passou de `localStorage` para `sessionStorage`, evitando carregar preferência de outro aluno em dispositivo compartilhado.
@@ -29,6 +35,7 @@ e este projeto utiliza o histórico de commits como referência cronológica.
 - **Deploy do GitLab Pages** — artefato publicado passa a incluir `logo.png`, `manifest.webmanifest` e `sw.js`, necessários para ícone, manifesto e funcionamento offline.
 
 ### Corrigido
+- **Atualização do PWA após mudanças no aluno** — cache do service worker avançado para `rubrica-static-v2`, evitando que navegadores continuem servindo `aluno/script.js` e `aluno/styles.css` antigos depois da publicação.
 - **Data local compartilhada** — `hoje()` em `shared/utils.js` agora usa data local em vez de `toISOString()`, evitando dia incorreto perto da meia-noite em fusos como America/Sao_Paulo. Isso corrige também o portal do professor, que consome o helper compartilhado.
 - **Histórico menos verboso para leitor de tela** — `aria-live` saiu da lista inteira e ficou no resumo do histórico, evitando reanúncio de todos os cards ao filtrar/ordenar.
 - **Duplicidade manual aula+data** — salvar ou atualizar bloqueia outro registro da mesma aula na mesma data, comparando sem diferenciar maiúsculas/minúsculas ou acentos.

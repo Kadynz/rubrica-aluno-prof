@@ -80,6 +80,38 @@
             <input type="hidden" id="studentLevel">
             <input type="hidden" id="classLevel">
 
+            <div class="subject-manager" aria-labelledby="tituloMateriasForm">
+                <div class="section-label-row">
+                    <h3 id="tituloMateriasForm"><i class="fas fa-layer-group"></i> Matérias e aulas</h3>
+                    <span id="subjectManagerHint" class="field-help" aria-live="polite"></span>
+                </div>
+                <div class="subject-grid">
+                    <div class="form-group">
+                        <label for="subjectSelect"><i class="fas fa-book"></i> Matéria</label>
+                        <select id="subjectSelect"></select>
+                        <div id="subjectSelectError" class="field-error" aria-live="polite"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="newSubjectName"><i class="fas fa-plus-circle"></i> Nova matéria</label>
+                        <div class="inline-action">
+                            <input type="text" id="newSubjectName" placeholder="Ex: Matemática" maxlength="80" autocomplete="off">
+                            <button type="button" class="btn btn-secondary btn-sm" id="btnAddSubject"><i class="fas fa-plus"></i> Adicionar</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="lesson-manager">
+                    <div class="form-group">
+                        <label for="newLessonName"><i class="fas fa-list-check"></i> Nova aula nesta matéria</label>
+                        <div class="inline-action">
+                            <input type="text" id="newLessonName" placeholder="Ex: Frações equivalentes" maxlength="100" autocomplete="off">
+                            <button type="button" class="btn btn-secondary btn-sm" id="btnAddLesson"><i class="fas fa-plus"></i> Adicionar</button>
+                        </div>
+                    </div>
+                    <div id="activeLessonsList" class="lesson-tags" aria-live="polite"></div>
+                </div>
+                <button type="button" class="btn btn-ghost btn-sm btn-subject-delete" id="btnDeleteSubject"><i class="fas fa-trash-alt"></i> Excluir matéria ativa</button>
+            </div>
+
             <div class="form-group">
                 <label for="lessonName"><i class="fas fa-book-open"></i> Nome da aula / atividade</label>
                 <input type="text" id="lessonName" list="lessonSuggestions" placeholder="Ex: Frações, Crase, Funções..." maxlength="100" autocomplete="off">
@@ -166,8 +198,13 @@
         </div>
         <form id="goalForm" class="goal-form" novalidate>
             <div class="form-group">
+                <label for="goalSubject"><i class="fas fa-layer-group"></i> Matéria opcional</label>
+                <select id="goalSubject"></select>
+            </div>
+            <div class="form-group">
                 <label for="goalLesson"><i class="fas fa-book"></i> Aula / assunto</label>
-                <input type="text" id="goalLesson" list="lessonSuggestions" placeholder="Ex: Frações" maxlength="100" autocomplete="off">
+                <input type="text" id="goalLesson" list="goalLessonSuggestions" placeholder="Ex: Frações" maxlength="100" autocomplete="off">
+                <datalist id="goalLessonSuggestions"></datalist>
             </div>
             <div class="goal-grid">
                 <div class="form-group">
@@ -214,25 +251,11 @@
                 <div class="stat-trend" id="streakInfo">Sem sequência</div>
             </div>
         </div>
-        <div class="chart-controls" aria-label="Controles do gráfico">
-            <div class="segmented" role="group" aria-label="Período do gráfico">
-                <button type="button" data-period="30">30d</button>
-                <button type="button" data-period="90">90d</button>
-                <button type="button" data-period="all">Tudo</button>
-            </div>
-            <div class="series-controls" aria-label="Séries do gráfico">
-                <label><input type="checkbox" id="showDesempenho" checked> Desempenho</label>
-                <label><input type="checkbox" id="showAula" checked> Aula</label>
-            </div>
-        </div>
-        <div id="emptyChart" class="empty-message chart-empty" aria-live="polite">
-            <i class="fas fa-chart-line"></i><br>Registre uma aula para ver sua evolução.
-        </div>
-        <div class="chart-wrapper" id="chartWrapper">
-            <canvas id="evolucaoChart" role="img" aria-label="Gráfico de linha mostrando a evolução do desempenho e da avaliação da aula"></canvas>
+        <div class="chart-launcher">
+            <button type="button" class="btn btn-primary btn-chart-open" id="btnOpenChart"><i class="fas fa-chart-simple"></i> Ver gráfico</button>
+            <p id="chartLauncherHint" class="chart-hint" aria-live="polite">Registre uma aula para abrir a visualização interativa.</p>
         </div>
         <div id="printChart" class="print-chart" aria-hidden="true"></div>
-        <div class="chart-hint">📈 Use o período e as séries para focar no que importa agora.</div>
     </section>
 
     <!-- Resumo semanal -->
@@ -284,6 +307,9 @@
             </select>
         </div>
         <div class="history-tools">
+            <select id="filtroMateria" aria-label="Filtrar por matéria">
+                <option value="">Todas as matérias</option>
+            </select>
             <input type="text" id="filtroAula" placeholder="Filtrar por aula" aria-label="Filtrar por aula">
             <input type="date" id="filtroData" aria-label="Filtrar por data">
         </div>
@@ -341,6 +367,70 @@
                 <button id="btnCancelImport" class="btn btn-secondary" type="button"><i class="fas fa-times"></i> Cancelar</button>
             </div>
         </form>
+    </dialog>
+
+    <!-- Modal Gráfico -->
+    <dialog id="modalChart" class="modal-dialog chart-modal-dialog" aria-labelledby="chartModalTitle" aria-describedby="chartModalDesc">
+        <div class="chart-modal-card" role="document">
+            <header class="chart-modal-header">
+                <div>
+                    <div class="modal-kicker"><i class="fas fa-chart-line"></i> Minha evolução</div>
+                    <h2 id="chartModalTitle">Gráfico interativo</h2>
+                    <p id="chartModalDesc">Filtre por matéria, aula, data, série e tipo de visualização.</p>
+                </div>
+                <button type="button" class="icon-btn" id="btnCloseChart" aria-label="Fechar gráfico"><i class="fas fa-times"></i></button>
+            </header>
+            <div class="chart-modal-body">
+                <section class="chart-stage" aria-live="polite">
+                    <div id="emptyChart" class="empty-message chart-empty">
+                        <i class="fas fa-chart-line"></i><br>Registre uma aula para ver sua evolução.
+                    </div>
+                    <div class="chart-wrapper" id="chartWrapper">
+                        <canvas id="evolucaoChart" role="img" aria-label="Gráfico mostrando a evolução do desempenho e da avaliação da aula"></canvas>
+                    </div>
+                </section>
+                <aside class="chart-filters" aria-label="Filtros do gráfico">
+                    <div class="form-group">
+                        <label for="chartType"><i class="fas fa-chart-pie"></i> Tipo de gráfico</label>
+                        <select id="chartType">
+                            <option value="line">Linha</option>
+                            <option value="bar">Coluna</option>
+                            <option value="horizontalBar">Barra horizontal</option>
+                            <option value="pie">Pizza</option>
+                            <option value="doughnut">Donut</option>
+                            <option value="radar">Radar</option>
+                        </select>
+                    </div>
+                    <fieldset class="filter-field">
+                        <legend><i class="fas fa-layer-group"></i> Matérias</legend>
+                        <div id="chartSubjectFilters" class="filter-checklist"></div>
+                    </fieldset>
+                    <fieldset class="filter-field">
+                        <legend><i class="fas fa-book-open"></i> Aulas</legend>
+                        <div id="chartLessonFilters" class="filter-checklist"></div>
+                    </fieldset>
+                    <div class="date-filter-grid">
+                        <div class="form-group">
+                            <label for="chartStartDate"><i class="far fa-calendar"></i> Data inicial</label>
+                            <input type="date" id="chartStartDate">
+                        </div>
+                        <div class="form-group">
+                            <label for="chartEndDate"><i class="far fa-calendar-check"></i> Data final</label>
+                            <input type="date" id="chartEndDate">
+                        </div>
+                    </div>
+                    <fieldset class="filter-field">
+                        <legend><i class="fas fa-eye"></i> Séries</legend>
+                        <div class="series-controls chart-series-controls">
+                            <label><input type="checkbox" id="chartShowDesempenho" checked> Desempenho</label>
+                            <label><input type="checkbox" id="chartShowAula" checked> Aula</label>
+                        </div>
+                    </fieldset>
+                    <p id="chartFilterSummary" class="filter-summary" aria-live="polite"></p>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btnClearChartFilters"><i class="fas fa-rotate-left"></i> Limpar filtros</button>
+                </aside>
+            </div>
+        </div>
     </dialog>
 
 </main>

@@ -4,6 +4,8 @@ let pendingImport = null;
 let highlightedRecordId = null;
 let highlightTimer = null;
 let metas = [];
+let materias = [];
+let lastChartTrigger = null;
 
 const STORAGE_KEY = 'portfolio_aluno_v1';
 const DRAFT_KEY = 'portfolio_aluno_draft_v1';
@@ -12,6 +14,10 @@ const CHART_PREFS_KEY = 'portfolio_aluno_chart_prefs_v1';
 const SORT_KEY = 'portfolio_aluno_sort_v1';
 const RUBRICA_OPEN_KEY = 'portfolio_aluno_rubrica_open_v1';
 const GOALS_KEY = 'portfolio_aluno_metas_v1';
+const SUBJECTS_KEY = 'portfolio_aluno_subjects_v1';
+const PRE_SUBJECTS_BACKUP_KEY = 'portfolio_aluno_backup_pre_materias_v1';
+const DEFAULT_SUBJECT_NAME = 'Geral';
+const CHART_TYPES = ['line', 'bar', 'horizontalBar', 'pie', 'doughnut', 'radar'];
 
 const DESEMPENHO = {
     1: { emoji: '🔴', texto: 'Iniciante', cls: 'chip-1' },
@@ -76,8 +82,40 @@ function normalizarTexto(str, max) {
     return typeof str === 'string' ? str.trim().slice(0, max) : '';
 }
 
+function normalizarNomeMateria(str) {
+    return normalizarTexto(str, 80) || DEFAULT_SUBJECT_NAME;
+}
+
+function normalizarChaveAula(nome) {
+    return String(nome || '')
+        .trim()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+}
+
+function nomesIguais(a, b) {
+    return normalizarChaveAula(a) === normalizarChaveAula(b);
+}
+
+function nomeMateriaRegistro(r) {
+    return normalizarNomeMateria(r?.subjectName || r?.materia || r?.subject || r?.disciplina);
+}
+
+function valoresUnicosPorNome(lista) {
+    const map = new Map();
+    lista.forEach(nome => {
+        const limpo = normalizarTexto(nome, 100);
+        if (!limpo) return;
+        const key = normalizarChaveAula(limpo);
+        if (!map.has(key)) map.set(key, limpo);
+    });
+    return [...map.values()].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
 function normalizarRegistro(r, idFallback = gerarId()) {
     if (!r || typeof r !== 'object') return null;
+    const subjectName = nomeMateriaRegistro(r);
     const lessonName = normalizarTexto(r.lessonName, 100);
     const date = normalizarTexto(r.date, 10);
     if (!lessonName || !dataIsoValida(date)) return null;
@@ -88,6 +126,7 @@ function normalizarRegistro(r, idFallback = gerarId()) {
 
     return {
         id: Number.isFinite(Number(r.id)) ? Number(r.id) : idFallback,
+        subjectName,
         lessonName,
         date,
         studentLevel,
@@ -98,6 +137,7 @@ function normalizarRegistro(r, idFallback = gerarId()) {
 
 function normalizarMeta(meta, idFallback = gerarId()) {
     if (!meta || typeof meta !== 'object') return null;
+    const subjectName = normalizarTexto(meta.subjectName || meta.materia || meta.subject || meta.disciplina, 80);
     const lessonName = normalizarTexto(meta.lessonName, 100);
     const dueDate = normalizarTexto(meta.dueDate, 10);
     if (!lessonName || !dataIsoValida(dueDate)) return null;
@@ -106,6 +146,7 @@ function normalizarMeta(meta, idFallback = gerarId()) {
     const doneAt = dataIsoValida(meta.doneAt) ? meta.doneAt : '';
     return {
         id: Number.isFinite(Number(meta.id)) ? Number(meta.id) : idFallback,
+        ...(subjectName ? { subjectName } : {}),
         lessonName,
         dueDate,
         targetLevel,
@@ -114,17 +155,144 @@ function normalizarMeta(meta, idFallback = gerarId()) {
     };
 }
 
+function normalizarMateria(materia, idFallback = gerarId()) {
+    if (!materia) return null;
+    const name = normalizarNomeMateria(
+        typeof materia === 'string'
+            ? materia
+            : (materia.name || materia.nome || materia.subjectName || materia.materia)
+    );
+    if (!name) return null;
+
+    const rawLessons = Array.isArray(materia.lessons)
+        ? materia.lessons
+        : (Array.isArray(materia.aulas) ? materia.aulas : []);
+    const lessons = valoresUnicosPorNome(rawLessons.map(aula =>
+        typeof aula === 'string' ? aula : (aula?.name || aula?.nome || aula?.lessonName)
+    ));
+
+    return {
+        id: Number.isFinite(Number(materia.id)) ? Number(materia.id) : idFallback,
+        name,
+        active: materia.active !== false && materia.ativa !== false,
+        lessons
+    };
+}
+
+function materiasAtivas() {
+    return materias
+        .filter(m => m.active !== false)
+        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+}
+
+function materiaPorNome(nome) {
+    const key = normalizarChaveAula(nome);
+    return materias.find(m => normalizarChaveAula(m.name) === key) || null;
+}
+
+function primeiraMateriaAtiva() {
+    return materiasAtivas()[0]?.name || DEFAULT_SUBJECT_NAME;
+}
+
+function mesclarMateriaNoCatalogo(materia, { reativar = false } = {}) {
+    const normalizada = normalizarMateria(materia);
+    if (!normalizada) return null;
+    const existente = materiaPorNome(normalizada.name);
+    if (existente) {
+        existente.lessons = valoresUnicosPorNome([...(existente.lessons || []), ...normalizada.lessons]);
+        if (reativar || normalizada.active !== false) existente.active = true;
+        return existente;
+    }
+    materias.push(normalizada);
+    return normalizada;
+}
+
+function garantirMateria(nome, { active = true, reativar = false } = {}) {
+    const name = normalizarNomeMateria(nome);
+    let materia = materiaPorNome(name);
+    if (!materia) {
+        materia = { id: gerarId(), name, active, lessons: [] };
+        materias.push(materia);
+        return materia;
+    }
+    if (reativar) materia.active = true;
+    return materia;
+}
+
+function adicionarAulaAoCatalogo(subjectName, lessonName, { reativarMateria = false, apenasSeAtiva = false } = {}) {
+    const aula = normalizarTexto(lessonName, 100);
+    if (!aula) return false;
+    const materia = garantirMateria(subjectName, { active: true, reativar: reativarMateria });
+    if (apenasSeAtiva && materia.active === false) return false;
+    if (!materia.lessons.some(nome => nomesIguais(nome, aula))) {
+        materia.lessons.push(aula);
+        materia.lessons = valoresUnicosPorNome(materia.lessons);
+        return true;
+    }
+    return false;
+}
+
+function sincronizarCatalogoComDados({ salvarAgora = false } = {}) {
+    registros.forEach(r => {
+        const nome = r.subjectName || DEFAULT_SUBJECT_NAME;
+        const materia = materiaPorNome(nome) || garantirMateria(nome, { active: true });
+        if (materia.active !== false) adicionarAulaAoCatalogo(materia.name, r.lessonName, { apenasSeAtiva: true });
+    });
+    metas.forEach(meta => {
+        if (meta.subjectName && !materiaPorNome(meta.subjectName)) garantirMateria(meta.subjectName, { active: true });
+    });
+    if (!materiasAtivas().length) garantirMateria(DEFAULT_SUBJECT_NAME, { active: true, reativar: true });
+    materias = materias
+        .map((m, i) => ({ ...m, id: Number.isFinite(Number(m.id)) ? Number(m.id) : Date.now() + i }))
+        .sort((a, b) => Number(a.active === false) - Number(b.active === false) || a.name.localeCompare(b.name, 'pt-BR'));
+    if (salvarAgora) salvarMaterias();
+}
+
+function carregarMaterias() {
+    try {
+        const stored = localStorage.getItem(SUBJECTS_KEY);
+        const parsed = stored ? JSON.parse(stored) : [];
+        const lista = Array.isArray(parsed) ? parsed : [];
+        materias = [];
+        lista
+            .map((m, i) => normalizarMateria(m, Date.now() + i + 9000))
+            .filter(Boolean)
+            .forEach(m => mesclarMateriaNoCatalogo(m, { reativar: false }));
+    } catch {
+        materias = [];
+    }
+    sincronizarCatalogoComDados({ salvarAgora: true });
+}
+
+function salvarMaterias() {
+    try {
+        localStorage.setItem(SUBJECTS_KEY, JSON.stringify(materias));
+        return true;
+    } catch (err) {
+        console.error('[Salvar matérias] falhou', err);
+        showToast('Não foi possível salvar matérias e aulas. Exporte um backup e libere espaço no navegador.', { type: 'error', duration: 9000 });
+        return false;
+    }
+}
+
 function carregarPreferenciasGrafico() {
     try {
         const raw = localStorage.getItem(CHART_PREFS_KEY);
         const parsed = raw ? JSON.parse(raw) : {};
+        const startDate = dataIsoValida(parsed.startDate)
+            ? parsed.startDate
+            : (['30', '90'].includes(parsed.period) ? isoDiasAtras(Number(parsed.period) - 1) : '');
         return {
-            period: ['30', '90', 'all'].includes(parsed.period) ? parsed.period : '90',
+            startDate,
+            endDate: dataIsoValida(parsed.endDate) ? parsed.endDate : '',
+            chartType: CHART_TYPES.includes(parsed.chartType) ? parsed.chartType : 'line',
             showDesempenho: parsed.showDesempenho !== false,
-            showAula: parsed.showAula !== false
+            showAula: parsed.showAula !== false,
+            selectedSubjects: Array.isArray(parsed.selectedSubjects) ? parsed.selectedSubjects.map(normalizarNomeMateria) : null,
+            selectedLessons: Array.isArray(parsed.selectedLessons) ? parsed.selectedLessons.map(nome => normalizarTexto(nome, 100)).filter(Boolean) : null
         };
     } catch {
-        return { period: '90', showDesempenho: true, showAula: true };
+        return { startDate: '', endDate: '', chartType: 'line', showDesempenho: true, showAula: true, selectedSubjects: null, selectedLessons: null };
     }
 }
 
@@ -133,13 +301,20 @@ function salvarPreferenciasGrafico() {
 }
 
 function carregar() {
+    let precisaMigrar = false;
+    let stored = '';
     try {
-        const stored = localStorage.getItem(STORAGE_KEY);
+        stored = localStorage.getItem(STORAGE_KEY);
         const parsed = stored ? JSON.parse(stored) : [];
         const lista = Array.isArray(parsed) ? parsed : [];
         const ids = new Set();
         registros = lista
-            .map((r, i) => normalizarRegistro(r, Date.now() + i))
+            .map((r, i) => {
+                if (r && typeof r === 'object' && !normalizarTexto(r.subjectName || r.materia || r.subject || r.disciplina, 80)) {
+                    precisaMigrar = true;
+                }
+                return normalizarRegistro(r, Date.now() + i);
+            })
             .filter(Boolean)
             .map(r => {
                 if (ids.has(r.id)) r.id = gerarId();
@@ -150,6 +325,16 @@ function carregar() {
         registros = [];
     }
     sortByDate(registros);
+    if (precisaMigrar && registros.length) {
+        try {
+            if (stored && !localStorage.getItem(PRE_SUBJECTS_BACKUP_KEY)) {
+                localStorage.setItem(PRE_SUBJECTS_BACKUP_KEY, stored);
+            }
+        } catch (err) {
+            console.info('[Migração] backup pré-matérias não salvo', err);
+        }
+        salvar();
+    }
 }
 
 function carregarMetas() {
@@ -207,7 +392,7 @@ function setNivel(targetId, value, { salvarRascunhoAgora = true } = {}) {
 }
 
 function limparErros() {
-    ['lessonName', 'lessonDate'].forEach(id => {
+    ['subjectSelect', 'lessonName', 'lessonDate'].forEach(id => {
         $(id).classList.remove('is-invalid');
         const error = $(`${id}Error`);
         if (error) error.textContent = '';
@@ -223,11 +408,17 @@ function limparErros() {
 function validarForm() {
     limparErros();
     const erros = [];
+    const subjectName = $('subjectSelect').value.trim();
     const lessonName = $('lessonName').value.trim();
     const date = $('lessonDate').value;
     const studentLevel = $('studentLevel').value;
     const classLevel = $('classLevel').value;
 
+    if (!subjectName) {
+        erros.push({ id: 'subjectSelect', msg: 'Escolha uma matéria.' });
+    } else if (!materiaPermitidaNoFormulario(subjectName)) {
+        erros.push({ id: 'subjectSelect', msg: 'Essa matéria foi excluída. Escolha uma matéria ativa.' });
+    }
     if (!lessonName) {
         erros.push({ id: 'lessonName', msg: 'Informe o nome da aula.' });
     }
@@ -265,6 +456,7 @@ function validarForm() {
 
 function dadosDoForm() {
     return {
+        subjectName: $('subjectSelect').value.trim(),
         lessonName: $('lessonName').value.trim(),
         date: $('lessonDate').value,
         studentLevel: Number($('studentLevel').value),
@@ -273,22 +465,24 @@ function dadosDoForm() {
     };
 }
 
-function normalizarChaveAula(nome) {
-    return String(nome || '')
-        .trim()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase();
-}
-
 function registroDuplicadoManual(dados, ignoreId = null) {
+    const materia = normalizarChaveAula(dados.subjectName || DEFAULT_SUBJECT_NAME);
     const aula = normalizarChaveAula(dados.lessonName);
-    return registros.find(r => r.id !== ignoreId && r.date === dados.date && normalizarChaveAula(r.lessonName) === aula);
+    return registros.find(r =>
+        r.id !== ignoreId &&
+        r.date === dados.date &&
+        normalizarChaveAula(r.subjectName || DEFAULT_SUBJECT_NAME) === materia &&
+        normalizarChaveAula(r.lessonName) === aula
+    );
 }
 
 function registrosDaMeta(meta) {
+    const materia = normalizarChaveAula(meta.subjectName || '');
     const aula = normalizarChaveAula(meta.lessonName);
-    return registros.filter(r => normalizarChaveAula(r.lessonName) === aula && r.date <= meta.dueDate);
+    return registros.filter(r => {
+        const mesmaMateria = !materia || normalizarChaveAula(r.subjectName || DEFAULT_SUBJECT_NAME) === materia;
+        return mesmaMateria && normalizarChaveAula(r.lessonName) === aula && r.date <= meta.dueDate;
+    });
 }
 
 function progressoMeta(meta) {
@@ -329,6 +523,7 @@ function validarMetaForm() {
     $('goalError').textContent = '';
     ['goalLesson', 'goalDate'].forEach(id => $(id).classList.remove('is-invalid'));
 
+    const subjectName = $('goalSubject').value.trim();
     const lessonName = $('goalLesson').value.trim();
     const dueDate = $('goalDate').value;
     const targetLevel = Number($('goalLevel').value);
@@ -351,7 +546,7 @@ function validarMetaForm() {
         return null;
     }
 
-    return { lessonName, dueDate, targetLevel };
+    return { ...(subjectName ? { subjectName } : {}), lessonName, dueDate, targetLevel };
 }
 
 function adicionarMeta() {
@@ -361,6 +556,7 @@ function adicionarMeta() {
         !meta.done &&
         meta.targetLevel === dados.targetLevel &&
         meta.dueDate === dados.dueDate &&
+        normalizarChaveAula(meta.subjectName || '') === normalizarChaveAula(dados.subjectName || '') &&
         normalizarChaveAula(meta.lessonName) === normalizarChaveAula(dados.lessonName)
     );
     if (duplicada) {
@@ -373,8 +569,10 @@ function adicionarMeta() {
     const mensagens = avaliarMetasAtingidas();
     if (!salvarMetas()) return;
     $('goalForm').reset();
+    $('goalSubject').value = '';
     $('goalLevel').value = '3';
     $('goalDate').value = isoDiasAFrente(30);
+    atualizarSugestoesAula();
     renderMetas();
     showToast(mensagens.length ? `Meta adicionada. ${mensagens.join(' ')}` : 'Meta adicionada.', { type: 'success', duration: 6000 });
 }
@@ -399,8 +597,11 @@ function excluirMeta(id) {
     });
 }
 
-function preencherForm(r) {
+function preencherForm(r, { preservarMateria = false } = {}) {
     $('editId').value = r?.id || '';
+    const preservada = preservarMateria ? $('subjectSelect').value : '';
+    const materiaAtual = materiaPorNome(preservada)?.active === false ? '' : preservada;
+    renderSubjectSelect(r?.subjectName || materiaAtual || primeiraMateriaAtiva());
     $('lessonName').value = r?.lessonName || '';
     $('lessonDate').value = r?.date || isoLocal();
     $('observation').value = r?.observation || '';
@@ -409,10 +610,12 @@ function preencherForm(r) {
     $('btnSalvar').innerHTML = r?.id ? '<i class="fas fa-pen"></i> Atualizar' : '<i class="fas fa-save"></i> Salvar';
     $('btnCancelar').hidden = !r?.id;
     atualizarContadores();
+    renderAulasDaMateriaAtiva();
+    atualizarSugestoesAula();
 }
 
 function limparForm() {
-    preencherForm(null);
+    preencherForm(null, { preservarMateria: true });
     limparErros();
     sessionStorage.removeItem(DRAFT_KEY);
 }
@@ -420,6 +623,7 @@ function limparForm() {
 function salvarRascunho() {
     const draft = {
         editId: $('editId').value,
+        subjectName: $('subjectSelect').value,
         lessonName: $('lessonName').value,
         date: $('lessonDate').value,
         studentLevel: $('studentLevel').value,
@@ -440,6 +644,7 @@ function restaurarRascunho() {
         if (!raw) return;
         const draft = JSON.parse(raw);
         $('editId').value = draft.editId || '';
+        renderSubjectSelect(draft.subjectName || primeiraMateriaAtiva());
         $('lessonName').value = draft.lessonName || '';
         $('lessonDate').value = draft.date || isoLocal();
         $('observation').value = draft.observation || '';
@@ -448,6 +653,8 @@ function restaurarRascunho() {
         $('btnSalvar').innerHTML = draft.editId ? '<i class="fas fa-pen"></i> Atualizar' : '<i class="fas fa-save"></i> Salvar';
         $('btnCancelar').hidden = !draft.editId;
         atualizarContadores();
+        renderAulasDaMateriaAtiva();
+        atualizarSugestoesAula();
     } catch {
         sessionStorage.removeItem(DRAFT_KEY);
     }
@@ -463,13 +670,16 @@ function adicionarRegistro(dados) {
 
     registros.push({
         id: gerarId(),
+        subjectName: dados.subjectName,
         lessonName: dados.lessonName,
         date: dados.date,
         studentLevel: dados.studentLevel,
         classLevel: dados.classLevel,
         ...(dados.observation ? { observation: dados.observation } : {})
     });
+    adicionarAulaAoCatalogo(dados.subjectName, dados.lessonName, { apenasSeAtiva: true });
     sortByDate(registros);
+    salvarMaterias();
     if (!salvar()) return;
     const metaMsgs = avaliarMetasAtingidas();
     limparForm();
@@ -490,6 +700,7 @@ function atualizarRegistro(id, dados) {
 
     registros[idx] = {
         ...registros[idx],
+        subjectName: dados.subjectName,
         lessonName: dados.lessonName,
         date: dados.date,
         studentLevel: dados.studentLevel,
@@ -497,7 +708,9 @@ function atualizarRegistro(id, dados) {
         ...(dados.observation ? { observation: dados.observation } : {})
     };
     if (!dados.observation) delete registros[idx].observation;
+    adicionarAulaAoCatalogo(dados.subjectName, dados.lessonName, { apenasSeAtiva: true });
     sortByDate(registros);
+    salvarMaterias();
     if (!salvar()) return;
     const metaMsgs = avaliarMetasAtingidas();
     limparForm();
@@ -542,6 +755,7 @@ function editarRegistro(id) {
 function focarRegistroExistente(registro) {
     highlightedRecordId = registro.id;
     clearTimeout(highlightTimer);
+    $('filtroMateria').value = registro.subjectName || DEFAULT_SUBJECT_NAME;
     $('filtroAula').value = registro.lessonName;
     $('filtroData').value = registro.date;
     renderizarLista();
@@ -560,10 +774,12 @@ function focarRegistroExistente(registro) {
 
 function getRegistrosFiltrados() {
     let lista = [...registros];
+    const materia = $('filtroMateria').value.trim();
     const termo = $('filtroAula').value.trim().toLowerCase();
     const data = $('filtroData').value;
     const sort = $('sortHistorico').value;
 
+    if (materia) lista = lista.filter(r => nomesIguais(r.subjectName || DEFAULT_SUBJECT_NAME, materia));
     if (termo) lista = lista.filter(r => r.lessonName.toLowerCase().includes(termo));
     if (data) lista = lista.filter(r => r.date === data);
 
@@ -572,7 +788,7 @@ function getRegistrosFiltrados() {
         if (sort === 'oldest') return byDate(a, b);
         if (sort === 'performance-desc') return b.studentLevel - a.studentLevel || byDate(b, a);
         if (sort === 'performance-asc') return a.studentLevel - b.studentLevel || byDate(b, a);
-        if (sort === 'name') return a.lessonName.localeCompare(b.lessonName, 'pt-BR') || byDate(b, a);
+        if (sort === 'name') return (a.subjectName || DEFAULT_SUBJECT_NAME).localeCompare(b.subjectName || DEFAULT_SUBJECT_NAME, 'pt-BR') || a.lessonName.localeCompare(b.lessonName, 'pt-BR') || byDate(b, a);
         return byDate(b, a);
     });
     return lista;
@@ -585,9 +801,10 @@ function textoOrdenacao() {
         oldest: 'Mostrando registros mais antigos primeiro.',
         'performance-desc': 'Mostrando maior desempenho primeiro.',
         'performance-asc': 'Mostrando menor desempenho primeiro.',
-        name: 'Mostrando em ordem alfabética por aula.'
+        name: 'Mostrando em ordem alfabética por matéria e aula.'
     };
     const filtros = [];
+    if ($('filtroMateria').value.trim()) filtros.push('matéria');
     if ($('filtroAula').value.trim()) filtros.push('aula');
     if ($('filtroData').value) filtros.push('data');
     return mapa[sort] + (filtros.length ? ` Filtro ativo: ${filtros.join(' e ')}.` : '');
@@ -620,7 +837,7 @@ function renderizarLista() {
         return `
         <article class="registro-item${editing ? ' editing' : ''}${highlighted ? ' duplicate-highlight' : ''}" data-record-id="${r.id}" tabindex="-1">
             <div class="registro-header">
-                <span class="registro-nome"><i class="fas fa-chalkboard" style="color:#3b82f6;margin-right:5px;"></i>${escapeHtml(r.lessonName)}${editing ? '<span class="edit-label"><i class="fas fa-pen"></i> Editando</span>' : ''}</span>
+                <span class="registro-nome registro-main"><span class="registro-subject"><i class="fas fa-layer-group"></i> ${escapeHtml(r.subjectName || DEFAULT_SUBJECT_NAME)}</span><span><i class="fas fa-chalkboard" style="color:#3b82f6;margin-right:5px;"></i>${escapeHtml(r.lessonName)}</span>${editing ? '<span class="edit-label"><i class="fas fa-pen"></i> Editando</span>' : ''}</span>
                 <span class="registro-data"><i class="far fa-calendar"></i> ${formatarData(r.date)}</span>
             </div>
             <div class="niveis-info">
@@ -764,13 +981,348 @@ function renderPrintChart(regs, showDesempenho, showAula) {
     </svg>`;
 }
 
+function valoresCheckboxes(containerId) {
+    return [...$(containerId).querySelectorAll('input[type="checkbox"]:checked')].map(input => input.value);
+}
+
+function todasMateriasParaFiltro() {
+    const map = new Map();
+    materias.forEach(m => {
+        const key = normalizarChaveAula(m.name);
+        if (!map.has(key)) map.set(key, { name: m.name, active: m.active !== false });
+        else if (m.active !== false) map.get(key).active = true;
+    });
+    registros.forEach(r => {
+        const name = r.subjectName || DEFAULT_SUBJECT_NAME;
+        const key = normalizarChaveAula(name);
+        if (!map.has(key)) map.set(key, { name, active: false });
+    });
+    return [...map.values()].sort((a, b) => {
+        if (a.active !== b.active) return a.active ? -1 : 1;
+        return a.name.localeCompare(b.name, 'pt-BR');
+    });
+}
+
+function aulasParaFiltro(subjectNames) {
+    const keys = new Set(subjectNames.map(normalizarChaveAula));
+    if (!keys.size) return [];
+    const nomes = [];
+    materias.forEach(m => {
+        if (keys.has(normalizarChaveAula(m.name))) nomes.push(...(m.lessons || []));
+    });
+    registros.forEach(r => {
+        if (keys.has(normalizarChaveAula(r.subjectName || DEFAULT_SUBJECT_NAME))) nomes.push(r.lessonName);
+    });
+    return valoresUnicosPorNome(nomes);
+}
+
+function selecionadosPorPreferencia(todos, selecionados) {
+    if (selecionados === null) return todos;
+    const keys = new Set(todos.map(normalizarChaveAula));
+    return selecionados.filter(nome => keys.has(normalizarChaveAula(nome)));
+}
+
+function renderCheckboxes(containerId, options, selected, emptyMessage, renderLabel = nome => escapeHtml(nome)) {
+    const container = $(containerId);
+    if (!options.length) {
+        container.innerHTML = `<div class="empty-inline">${emptyMessage}</div>`;
+        return;
+    }
+    const selectedKeys = new Set(selected.map(normalizarChaveAula));
+    container.innerHTML = options.map(option => {
+        const value = typeof option === 'string' ? option : option.name;
+        const checked = selectedKeys.has(normalizarChaveAula(value)) ? ' checked' : '';
+        return `<label><input type="checkbox" value="${escapeHtml(value)}"${checked}> <span>${renderLabel(option)}</span></label>`;
+    }).join('');
+}
+
+function renderChartFilterOptions() {
+    const subjectOptions = todasMateriasParaFiltro();
+    const allSubjects = subjectOptions.map(option => option.name);
+    const selectedSubjects = selecionadosPorPreferencia(allSubjects, chartPrefs.selectedSubjects);
+
+    renderCheckboxes(
+        'chartSubjectFilters',
+        subjectOptions,
+        selectedSubjects,
+        'Nenhuma matéria disponível.',
+        option => `${escapeHtml(option.name)}${option.active ? '' : ' <small>(excluída)</small>'}`
+    );
+
+    const lessonOptions = aulasParaFiltro(selectedSubjects);
+    const selectedLessons = selecionadosPorPreferencia(lessonOptions, chartPrefs.selectedLessons);
+    renderCheckboxes(
+        'chartLessonFilters',
+        lessonOptions,
+        selectedLessons,
+        selectedSubjects.length ? 'Nenhuma aula encontrada para as matérias escolhidas.' : 'Selecione ao menos uma matéria.'
+    );
+
+    chartPrefs.selectedSubjects = chartPrefs.selectedSubjects === null ? null : selectedSubjects;
+    chartPrefs.selectedLessons = chartPrefs.selectedLessons === null ? null : selectedLessons;
+    atualizarResumoFiltrosGrafico();
+}
+
+function registrosFiltradosGrafico() {
+    let lista = sortByDate([...registros]);
+    const subjects = valoresCheckboxes('chartSubjectFilters');
+    const lessons = valoresCheckboxes('chartLessonFilters');
+    const lessonOptions = aulasParaFiltro(subjects);
+    const startDate = $('chartStartDate').value;
+    const endDate = $('chartEndDate').value;
+
+    if (todasMateriasParaFiltro().length && !subjects.length) return [];
+    const subjectKeys = new Set(subjects.map(normalizarChaveAula));
+    if (subjectKeys.size) {
+        lista = lista.filter(r => subjectKeys.has(normalizarChaveAula(r.subjectName || DEFAULT_SUBJECT_NAME)));
+    }
+
+    if (lessonOptions.length && !lessons.length) return [];
+    const lessonKeys = new Set(lessons.map(normalizarChaveAula));
+    if (lessonKeys.size) lista = lista.filter(r => lessonKeys.has(normalizarChaveAula(r.lessonName)));
+    if (dataIsoValida(startDate)) lista = lista.filter(r => r.date >= startDate);
+    if (dataIsoValida(endDate)) lista = lista.filter(r => r.date <= endDate);
+    return lista;
+}
+
+function mensagemGraficoVazio() {
+    if (!registros.length) return '<i class="fas fa-chart-line"></i><br>Registre uma aula para ver sua evolução.';
+    if (!valoresCheckboxes('chartSubjectFilters').length) return '<i class="fas fa-layer-group"></i><br>Selecione ao menos uma matéria.';
+    if (aulasParaFiltro(valoresCheckboxes('chartSubjectFilters')).length && !valoresCheckboxes('chartLessonFilters').length) {
+        return '<i class="fas fa-book-open"></i><br>Selecione ao menos uma aula.';
+    }
+    return '<i class="fas fa-search"></i><br>Nenhum registro encontrado com esses filtros.';
+}
+
+function atualizarResumoBotaoGrafico(regs) {
+    const hint = $('chartLauncherHint');
+    if (!hint) return;
+    if (!registros.length) {
+        hint.textContent = 'Registre uma aula para abrir a visualização interativa.';
+    } else if (!regs.length) {
+        hint.textContent = 'Os filtros atuais não encontram registros. Abra o gráfico para ajustar.';
+    } else {
+        const datas = regs.map(r => r.date).sort();
+        const intervalo = datas[0] === datas[datas.length - 1]
+            ? formatarData(datas[0])
+            : `${formatarData(datas[0])} a ${formatarData(datas[datas.length - 1])}`;
+        hint.textContent = `${regs.length} registro(s) no gráfico atual, de ${intervalo}.`;
+    }
+}
+
+function atualizarResumoFiltrosGrafico() {
+    const summary = $('chartFilterSummary');
+    if (!summary) return;
+    const regs = registrosFiltradosGrafico();
+    const subjects = valoresCheckboxes('chartSubjectFilters').length;
+    const lessons = valoresCheckboxes('chartLessonFilters').length;
+    summary.textContent = `${regs.length} registro(s) selecionado(s). ${subjects} matéria(s), ${lessons} aula(s).`;
+}
+
+function labelRegistroGrafico(r) {
+    return `${labelCurtoData(r.date)} · ${r.lessonName}`;
+}
+
+function datasetEvolucao(label, data, color, background, extra = {}) {
+    return {
+        label,
+        data,
+        borderColor: color,
+        backgroundColor: background,
+        borderWidth: 2.5,
+        tension: 0.25,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        pointBorderColor: 'white',
+        ...extra
+    };
+}
+
+function escalaNivel(axis = 'y') {
+    return {
+        [axis]: {
+            min: 0.5,
+            max: 4.5,
+            ticks: {
+                stepSize: 1,
+                font: { size: 10 },
+                callback: v => ({ 1: '1', 2: '2', 3: '3', 4: '4' }[v] || '')
+            },
+            title: { display: true, text: 'Nível', font: { size: 10 } }
+        }
+    };
+}
+
+function opcoesBaseGrafico(regs, chartType) {
+    const horizontal = chartType === 'horizontalBar';
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: horizontal ? 'y' : 'x',
+        scales: {
+            ...(horizontal ? escalaNivel('x') : escalaNivel('y')),
+            [horizontal ? 'y' : 'x']: { ticks: { maxRotation: horizontal ? 0 : 35, autoSkip: true, font: { size: 10 } } }
+        },
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    title: items => {
+                        const idx = items[0]?.dataIndex;
+                        return regs[idx] ? `${formatarData(regs[idx].date)} · ${regs[idx].subjectName || DEFAULT_SUBJECT_NAME} · ${regs[idx].lessonName}` : '';
+                    },
+                    label: ctx => {
+                        const mapa = ctx.dataset.label === 'Meu desempenho' ? DESEMPENHO : AVALIACAO;
+                        const d = mapa[ctx.raw];
+                        return d ? ` ${ctx.dataset.label}: ${d.emoji} Nível ${ctx.raw} - ${d.texto}` : ` Nível ${ctx.raw}`;
+                    }
+                }
+            },
+            legend: { labels: { font: { size: 11 }, boxWidth: 12 } }
+        }
+    };
+}
+
+function criarConfigEvolucao(chartType, regs, showDesempenho, showAula) {
+    const labels = regs.map(labelRegistroGrafico);
+    const datasets = [];
+    const baseType = chartType === 'line' ? 'line' : 'bar';
+    const lineMode = chartType === 'line';
+    if (showDesempenho) {
+        datasets.push(datasetEvolucao(
+            'Meu desempenho',
+            regs.map(r => r.studentLevel),
+            '#3b82f6',
+            lineMode ? 'rgba(59,130,246,0.12)' : 'rgba(59,130,246,0.72)',
+            {
+                fill: lineMode,
+                pointBackgroundColor: regs.map(r => corPontoNivel(r.studentLevel))
+            }
+        ));
+    }
+    if (showAula) {
+        datasets.push(datasetEvolucao(
+            'Como foi a aula',
+            regs.map(r => r.classLevel),
+            '#16a34a',
+            lineMode ? 'rgba(22,163,74,0.08)' : 'rgba(22,163,74,0.68)',
+            {
+                fill: lineMode && !showDesempenho,
+                borderDash: lineMode && showDesempenho ? [6, 4] : [],
+                pointBackgroundColor: regs.map(r => corPontoNivel(r.classLevel))
+            }
+        ));
+    }
+    return {
+        type: baseType,
+        data: { labels, datasets },
+        options: opcoesBaseGrafico(regs, chartType)
+    };
+}
+
+function criarConfigDistribuicao(chartType, regs, showDesempenho, showAula) {
+    const counts = [0, 0, 0, 0];
+    regs.forEach(r => {
+        if (showDesempenho) counts[r.studentLevel - 1]++;
+        if (showAula) counts[r.classLevel - 1]++;
+    });
+    return {
+        type: chartType,
+        data: {
+            labels: ['Nível 1', 'Nível 2', 'Nível 3', 'Nível 4'],
+            datasets: [{
+                label: 'Distribuição de níveis',
+                data: counts,
+                backgroundColor: ['#ef4444', '#f59e0b', '#0ea5e9', '#22c55e'],
+                borderColor: '#ffffff',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ` ${ctx.label}: ${ctx.raw} ocorrência(s)`
+                    }
+                }
+            }
+        }
+    };
+}
+
+function criarConfigRadar(regs, showDesempenho, showAula) {
+    const subjects = valoresCheckboxes('chartSubjectFilters');
+    const agruparPorAula = subjects.length === 1;
+    const grupos = new Map();
+    regs.forEach(r => {
+        const key = agruparPorAula ? r.lessonName : (r.subjectName || DEFAULT_SUBJECT_NAME);
+        if (!grupos.has(key)) grupos.set(key, { label: key, count: 0, student: 0, aula: 0 });
+        const g = grupos.get(key);
+        g.count++;
+        g.student += r.studentLevel;
+        g.aula += r.classLevel;
+    });
+    const valores = [...grupos.values()]
+        .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'pt-BR'))
+        .slice(0, 8);
+    const labels = valores.map(g => g.label);
+    const datasets = [];
+    if (showDesempenho) {
+        datasets.push({
+            label: 'Média desempenho',
+            data: valores.map(g => Number((g.student / g.count).toFixed(2))),
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59,130,246,0.22)',
+            pointBackgroundColor: '#3b82f6'
+        });
+    }
+    if (showAula) {
+        datasets.push({
+            label: 'Média das aulas',
+            data: valores.map(g => Number((g.aula / g.count).toFixed(2))),
+            borderColor: '#16a34a',
+            backgroundColor: 'rgba(22,163,74,0.18)',
+            pointBackgroundColor: '#16a34a'
+        });
+    }
+    return {
+        type: 'radar',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { r: { min: 0, max: 4, ticks: { stepSize: 1 } } },
+            plugins: { legend: { position: 'bottom' } }
+        }
+    };
+}
+
+function criarConfigGrafico(chartType, regs, showDesempenho, showAula) {
+    if (chartType === 'pie' || chartType === 'doughnut') return criarConfigDistribuicao(chartType, regs, showDesempenho, showAula);
+    if (chartType === 'radar') return criarConfigRadar(regs, showDesempenho, showAula);
+    return criarConfigEvolucao(chartType, regs, showDesempenho, showAula);
+}
+
 function renderGrafico() {
     const wrapper = $('chartWrapper');
     const empty = $('emptyChart');
-    const regs = registrosPorPeriodo(chartPrefs.period);
-    const showDesempenho = $('showDesempenho').checked;
-    const showAula = $('showAula').checked;
+    const modal = $('modalChart');
+    const regs = registrosFiltradosGrafico();
+    const showDesempenho = $('chartShowDesempenho').checked;
+    const showAula = $('chartShowAula').checked;
+    const chartType = $('chartType').value;
     renderPrintChart(regs, showDesempenho, showAula);
+    atualizarResumoBotaoGrafico(regs);
+
+    if (!modal.open) {
+        if (chartInstance) {
+            chartInstance.destroy();
+            chartInstance = null;
+        }
+        return;
+    }
 
     if (typeof Chart === 'undefined') {
         wrapper.style.display = 'none';
@@ -783,7 +1335,7 @@ function renderGrafico() {
         wrapper.style.display = 'none';
         empty.style.display = 'block';
         empty.innerHTML = !regs.length
-            ? '<i class="fas fa-chart-line"></i><br>Registre uma aula neste período para ver sua evolução.'
+            ? mensagemGraficoVazio()
             : '<i class="fas fa-eye-slash"></i><br>Ative ao menos uma série para ver o gráfico.';
         if (chartInstance) {
             chartInstance.destroy();
@@ -795,74 +1347,11 @@ function renderGrafico() {
     wrapper.style.display = 'block';
     empty.style.display = 'none';
 
-    const labels = regs.map(r => labelCurtoData(r.date));
-    const datasets = [];
-    if (showDesempenho) {
-        datasets.push({
-            label: 'Meu desempenho',
-            data: regs.map(r => r.studentLevel),
-            borderColor: '#3b82f6',
-            backgroundColor: 'rgba(59,130,246,0.12)',
-            tension: 0.25,
-            fill: true,
-            pointBackgroundColor: regs.map(r => corPontoNivel(r.studentLevel)),
-            pointBorderColor: 'white',
-            pointRadius: 5,
-            pointHoverRadius: 7,
-            borderWidth: 2.5,
-        });
-    }
-    if (showAula) {
-        datasets.push({
-            label: 'Como foi a aula',
-            data: regs.map(r => r.classLevel),
-            borderColor: '#16a34a',
-            backgroundColor: 'rgba(22,163,74,0.08)',
-            tension: 0.25,
-            fill: !showDesempenho,
-            pointBackgroundColor: regs.map(r => corPontoNivel(r.classLevel)),
-            pointBorderColor: 'white',
-            pointRadius: 5,
-            pointHoverRadius: 7,
-            borderWidth: 2.5,
-            borderDash: showDesempenho ? [6, 4] : []
-        });
-    }
+    const config = criarConfigGrafico(chartType, regs, showDesempenho, showAula);
 
     const ctx = $('evolucaoChart').getContext('2d');
     if (chartInstance) chartInstance.destroy();
-    chartInstance = new Chart(ctx, {
-        type: 'line',
-        data: { labels, datasets },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    min: 0.5, max: 4.5,
-                    ticks: { stepSize: 1, font: { size: 10 }, callback: v => ({ 1: '🔴 1', 2: '🟠 2', 3: '🔵 3', 4: '🟢 4' }[v] || '') },
-                    title: { display: true, text: 'Nível', font: { size: 10 } }
-                },
-                x: { ticks: { maxRotation: 40, autoSkip: true, font: { size: 10 } } }
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        title: items => {
-                            const idx = items[0]?.dataIndex;
-                            return regs[idx] ? `${formatarData(regs[idx].date)} · ${regs[idx].lessonName}` : '';
-                        },
-                        label: ctx => {
-                            const mapa = ctx.dataset.label === 'Meu desempenho' ? DESEMPENHO : AVALIACAO;
-                            const d = mapa[ctx.raw];
-                            return d ? ` ${ctx.dataset.label}: ${d.emoji} Nível ${ctx.raw} - ${d.texto}` : ` Nível ${ctx.raw}`;
-                        }
-                    }
-                },
-                legend: { labels: { font: { size: 11 }, boxWidth: 12 } }
-            }
-        }
-    });
+    chartInstance = new Chart(ctx, config);
 }
 
 function renderInsights() {
@@ -874,18 +1363,18 @@ function renderInsights() {
 
     const melhor = [...registros].sort((a, b) => b.studentLevel - a.studentLevel || parseIsoLocal(b.date) - parseIsoLocal(a.date))[0];
     const maisConfusa = [...registros].sort((a, b) => a.classLevel - b.classLevel || parseIsoLocal(b.date) - parseIsoLocal(a.date))[0];
-    const materias = registros.reduce((acc, r) => {
-        const key = r.lessonName.toLowerCase();
-        if (!acc[key]) acc[key] = { nome: r.lessonName, total: 0, soma: 0 };
+    const assuntos = registros.reduce((acc, r) => {
+        const key = `${normalizarChaveAula(r.subjectName || DEFAULT_SUBJECT_NAME)}|${normalizarChaveAula(r.lessonName)}`;
+        if (!acc[key]) acc[key] = { nome: `${r.subjectName || DEFAULT_SUBJECT_NAME} · ${r.lessonName}`, total: 0, soma: 0 };
         acc[key].total++;
         acc[key].soma += r.studentLevel;
         return acc;
     }, {});
-    const recorrente = Object.values(materias).sort((a, b) => b.total - a.total || (b.soma / b.total) - (a.soma / a.total))[0];
+    const recorrente = Object.values(assuntos).sort((a, b) => b.total - a.total || (b.soma / b.total) - (a.soma / a.total))[0];
 
     const cards = [
-        `<div class="insight-card"><strong>Melhor desempenho</strong><span>${escapeHtml(melhor.lessonName)} chegou ao nível ${melhor.studentLevel} em ${formatarData(melhor.date)}.</span></div>`,
-        `<div class="insight-card"><strong>Aula que pediu atenção</strong><span>${escapeHtml(maisConfusa.lessonName)} ficou como "${AVALIACAO[maisConfusa.classLevel].texto}".</span></div>`,
+        `<div class="insight-card"><strong>Melhor desempenho</strong><span>${escapeHtml(melhor.subjectName || DEFAULT_SUBJECT_NAME)} · ${escapeHtml(melhor.lessonName)} chegou ao nível ${melhor.studentLevel} em ${formatarData(melhor.date)}.</span></div>`,
+        `<div class="insight-card"><strong>Aula que pediu atenção</strong><span>${escapeHtml(maisConfusa.subjectName || DEFAULT_SUBJECT_NAME)} · ${escapeHtml(maisConfusa.lessonName)} ficou como "${AVALIACAO[maisConfusa.classLevel].texto}".</span></div>`,
         `<div class="insight-card"><strong>Assunto mais registrado</strong><span>${escapeHtml(recorrente.nome)} aparece ${recorrente.total} vez(es), média ${(recorrente.soma / recorrente.total).toFixed(1)}.</span></div>`,
         `<div class="insight-card"><strong>Total refletido</strong><span>${registros.filter(r => r.observation).length} registro(s) têm observação escrita.</span></div>`
     ];
@@ -902,7 +1391,7 @@ function renderMetas() {
     const hojeIso = isoLocal();
     const ordenadas = [...metas].sort((a, b) => {
         if (a.done !== b.done) return a.done ? 1 : -1;
-        return a.dueDate.localeCompare(b.dueDate) || a.lessonName.localeCompare(b.lessonName, 'pt-BR');
+        return a.dueDate.localeCompare(b.dueDate) || (a.subjectName || '').localeCompare(b.subjectName || '', 'pt-BR') || a.lessonName.localeCompare(b.lessonName, 'pt-BR');
     });
 
     el.innerHTML = ordenadas.map(meta => {
@@ -921,7 +1410,7 @@ function renderMetas() {
             <div class="goal-header">
                 <div>
                     <strong>${escapeHtml(meta.lessonName)}</strong>
-                    <span>Meta: nível ${meta.targetLevel} até ${formatarData(meta.dueDate)}</span>
+                    <span>${meta.subjectName ? `${escapeHtml(meta.subjectName)} · ` : ''}Meta: nível ${meta.targetLevel} até ${formatarData(meta.dueDate)}</span>
                 </div>
                 <button class="btn-del-goal" data-id="${meta.id}" type="button" aria-label="Remover meta ${escapeHtml(meta.lessonName)}"><i class="fas fa-trash-alt"></i></button>
             </div>
@@ -1026,28 +1515,131 @@ function renderQuadranteAluno() {
         <p class="quadrant-insight">${insight}</p>`;
 }
 
+function materiaPermitidaNoFormulario(subjectName) {
+    const materia = materiaPorNome(subjectName);
+    if (materia?.active !== false) return true;
+    const editId = Number($('editId').value);
+    const registro = registros.find(r => r.id === editId);
+    return Boolean(registro && nomesIguais(registro.subjectName || DEFAULT_SUBJECT_NAME, subjectName));
+}
+
+function renderSubjectSelect(preferida = '') {
+    const select = $('subjectSelect');
+    if (!select) return;
+    const atual = preferida || select.value || primeiraMateriaAtiva();
+    const active = materiasAtivas();
+    if (!active.length) {
+        garantirMateria(DEFAULT_SUBJECT_NAME, { active: true, reativar: true });
+        salvarMaterias();
+    }
+
+    const options = materiasAtivas().map(m => `<option value="${escapeHtml(m.name)}">${escapeHtml(m.name)}</option>`);
+    const atualNoAtivo = materiasAtivas().some(m => nomesIguais(m.name, atual));
+    const atualMateria = materiaPorNome(atual);
+    if (atual && !atualNoAtivo && atualMateria) {
+        options.push(`<option value="${escapeHtml(atualMateria.name)}">${escapeHtml(atualMateria.name)} (excluída)</option>`);
+    }
+    select.innerHTML = options.join('');
+    select.value = options.length && [...select.options].some(option => option.value === atual)
+        ? atual
+        : primeiraMateriaAtiva();
+}
+
+function renderGoalSubjectSelect() {
+    const select = $('goalSubject');
+    if (!select) return;
+    const atual = select.value;
+    select.innerHTML = '<option value="">Sem matéria específica</option>' +
+        materiasAtivas().map(m => `<option value="${escapeHtml(m.name)}">${escapeHtml(m.name)}</option>`).join('');
+    select.value = materiasAtivas().some(m => nomesIguais(m.name, atual)) ? atual : '';
+}
+
+function renderFiltroMateria() {
+    const select = $('filtroMateria');
+    if (!select) return;
+    const atual = select.value;
+    const options = todasMateriasParaFiltro();
+    select.innerHTML = '<option value="">Todas as matérias</option>' +
+        options.map(option => `<option value="${escapeHtml(option.name)}">${escapeHtml(option.name)}${option.active ? '' : ' (excluída)'}</option>`).join('');
+    select.value = options.some(option => nomesIguais(option.name, atual)) ? atual : '';
+}
+
+function aulasAtivasDaMateria(subjectName) {
+    const materia = materiaPorNome(subjectName);
+    if (!materia || materia.active === false) return [];
+    return valoresUnicosPorNome([
+        ...(materia.lessons || []),
+        ...registros
+            .filter(r => nomesIguais(r.subjectName || DEFAULT_SUBJECT_NAME, materia.name))
+            .map(r => r.lessonName)
+    ]);
+}
+
+function aulasParaMeta(subjectName) {
+    if (subjectName) return aulasAtivasDaMateria(subjectName);
+    const nomes = [];
+    materiasAtivas().forEach(m => nomes.push(...aulasAtivasDaMateria(m.name)));
+    metas.forEach(meta => nomes.push(meta.lessonName));
+    return valoresUnicosPorNome(nomes);
+}
+
+function renderAulasDaMateriaAtiva() {
+    const selected = $('subjectSelect').value;
+    const materia = materiaPorNome(selected);
+    const list = $('activeLessonsList');
+    const addBtn = $('btnAddLesson');
+    const input = $('newLessonName');
+    const deleteBtn = $('btnDeleteSubject');
+    const hint = $('subjectManagerHint');
+    const ativa = materia?.active !== false;
+    const aulas = aulasAtivasDaMateria(selected);
+
+    addBtn.disabled = !ativa;
+    input.disabled = !ativa;
+    deleteBtn.disabled = !ativa || materiasAtivas().length <= 1;
+    hint.textContent = `${materiasAtivas().length} matéria(s) ativa(s).`;
+
+    if (!ativa) {
+        list.innerHTML = '<span class="empty-inline">Esta matéria foi excluída. Os registros antigos continuam no histórico.</span>';
+        return;
+    }
+    if (!aulas.length) {
+        list.innerHTML = '<span class="empty-inline">Nenhuma aula cadastrada nesta matéria. Adicione uma aula ou registre uma avaliação nova.</span>';
+        return;
+    }
+    list.innerHTML = aulas.slice(0, 24).map(aula => `<span class="lesson-tag"><i class="fas fa-book-open"></i> ${escapeHtml(aula)}</span>`).join('');
+}
+
+function renderizarCatalogoUI() {
+    renderSubjectSelect($('subjectSelect')?.value || primeiraMateriaAtiva());
+    renderGoalSubjectSelect();
+    renderFiltroMateria();
+    renderAulasDaMateriaAtiva();
+    atualizarSugestoesAula();
+    renderChartFilterOptions();
+}
+
 function renderizar() {
+    sincronizarCatalogoComDados();
+    renderizarCatalogoUI();
     renderizarLista();
     atualizarEstatisticas();
     renderMetas();
     renderResumoSemanal();
     renderQuadranteAluno();
     renderInsights();
-    atualizarSugestoesAula();
 }
 
 function atualizarSugestoesAula() {
     const datalist = $('lessonSuggestions');
-    const nomes = [];
-    [...registros].reverse().forEach(r => {
-        const existe = nomes.some(n => n.toLowerCase() === r.lessonName.toLowerCase());
-        if (!existe) nomes.push(r.lessonName);
-    });
-    [...metas].reverse().forEach(meta => {
-        const existe = nomes.some(n => n.toLowerCase() === meta.lessonName.toLowerCase());
-        if (!existe) nomes.push(meta.lessonName);
-    });
-    datalist.innerHTML = nomes.slice(0, 20).map(nome => `<option value="${escapeHtml(nome)}"></option>`).join('');
+    const goalDatalist = $('goalLessonSuggestions');
+    const materiaForm = $('subjectSelect')?.value || primeiraMateriaAtiva();
+    const materiaMeta = $('goalSubject')?.value || '';
+    const aulasForm = aulasAtivasDaMateria(materiaForm);
+    const aulasMeta = aulasParaMeta(materiaMeta);
+
+    datalist.innerHTML = aulasForm.slice(0, 30).map(nome => `<option value="${escapeHtml(nome)}"></option>`).join('');
+    goalDatalist.innerHTML = aulasMeta.slice(0, 30).map(nome => `<option value="${escapeHtml(nome)}"></option>`).join('');
 }
 
 function atualizarContadores() {
@@ -1150,10 +1742,11 @@ function escapeCSV(str) {
 }
 
 function gerarCSVAluno(regs) {
-    let csv = 'Data;Aula;Meu Desempenho;Avaliação da Aula;Observação\n';
+    let csv = 'Data;Matéria;Aula;Meu Desempenho;Avaliação da Aula;Observação\n';
     sortByDate([...regs]).forEach(r => {
         csv += [
             escapeCSV(r.date),
+            escapeCSV(r.subjectName || DEFAULT_SUBJECT_NAME),
             escapeCSV(r.lessonName),
             r.studentLevel,
             r.classLevel,
@@ -1229,7 +1822,17 @@ function prepararJSONImport(rawText) {
     const registrosImportados = sanearImportacao(lista);
     const temMetas = Array.isArray(data?.metas);
     const metasImportadas = temMetas ? sanearMetasImportacao(data.metas) : { novas: [], ignoradas: [] };
-    return { ...registrosImportados, metas: metasImportadas.novas, metasIgnoradas: metasImportadas.ignoradas, temMetas };
+    const temMaterias = Array.isArray(data?.materias);
+    const materiasImportadas = temMaterias ? sanearMateriasImportacao(data.materias) : { novas: [], ignoradas: [] };
+    return {
+        ...registrosImportados,
+        metas: metasImportadas.novas,
+        metasIgnoradas: metasImportadas.ignoradas,
+        temMetas,
+        materias: materiasImportadas.novas,
+        materiasIgnoradas: materiasImportadas.ignoradas,
+        temMaterias
+    };
 }
 
 function prepararCSVImport(rawText) {
@@ -1239,18 +1842,21 @@ function prepararCSVImport(rawText) {
     const rows = parseCSV(text, delimiter);
     if (rows.length < 2) throw new Error('CSV vazio: é preciso pelo menos o cabeçalho e uma linha de dados.');
     const header = rows[0].map(normalizarHeader);
-    if (header[0] !== 'data' || !['aula', 'nome da aula', 'atividade'].includes(header[1])) {
-        throw new Error('Cabeçalho do CSV inválido. Esperado começar com "Data;Aula".');
+    const hasMateria = ['materia', 'disciplina'].includes(header[1]);
+    const aulaIndex = hasMateria ? 2 : 1;
+    if (header[0] !== 'data' || !['aula', 'nome da aula', 'atividade'].includes(header[aulaIndex])) {
+        throw new Error('Cabeçalho do CSV inválido. Esperado começar com "Data;Matéria;Aula" ou "Data;Aula".');
     }
 
     const lista = rows.slice(1).map(row => ({
         date: row[0],
-        lessonName: row[1],
-        studentLevel: row[2],
-        classLevel: row[3],
-        observation: row[4]
+        subjectName: hasMateria ? row[1] : DEFAULT_SUBJECT_NAME,
+        lessonName: row[aulaIndex],
+        studentLevel: row[aulaIndex + 1],
+        classLevel: row[aulaIndex + 2],
+        observation: row[aulaIndex + 3]
     }));
-    return { ...sanearImportacao(lista), metas: [], metasIgnoradas: [], temMetas: false };
+    return { ...sanearImportacao(lista), metas: [], metasIgnoradas: [], temMetas: false, materias: [], materiasIgnoradas: [], temMaterias: false };
 }
 
 function sanearImportacao(lista) {
@@ -1283,9 +1889,28 @@ function sanearMetasImportacao(lista) {
     return { novas, ignoradas };
 }
 
+function sanearMateriasImportacao(lista) {
+    let nextId = Date.now() + 11000;
+    const ignoradas = [];
+    const novas = [];
+    lista.forEach((materia, i) => {
+        const normalizada = normalizarMateria(
+            typeof materia === 'string' ? materia : { ...materia, id: nextId++ },
+            nextId++
+        );
+        if (!normalizada) {
+            ignoradas.push(i + 1);
+            return;
+        }
+        novas.push(normalizada);
+    });
+    return { novas, ignoradas };
+}
+
 function chaveRegistro(r) {
     return [
         r.date,
+        normalizarChaveAula(r.subjectName || DEFAULT_SUBJECT_NAME),
         r.lessonName.trim().toLowerCase(),
         r.studentLevel,
         r.classLevel,
@@ -1295,6 +1920,7 @@ function chaveRegistro(r) {
 
 function chaveMeta(meta) {
     return [
+        normalizarChaveAula(meta.subjectName || ''),
         normalizarChaveAula(meta.lessonName),
         meta.targetLevel,
         meta.dueDate
@@ -1311,8 +1937,11 @@ function abrirModalImportacao(resultado, tipo) {
     const metasInfo = pendingImport.temMetas
         ? ` ${pendingImport.metas.length} meta(s) válida(s) também serão consideradas.`
         : '';
-    const invalidos = pendingImport.ignoradas.length + (pendingImport.metasIgnoradas?.length || 0);
-    $('importSummary').textContent = `${pendingImport.novos.length} registro(s) válido(s) encontrados em ${tipo.toUpperCase()}.${metasInfo} ${invalidos ? `${invalidos} linha(s)/item(ns) serão ignorados.` : 'Nenhum item inválido encontrado.'}`;
+    const materiasInfo = pendingImport.temMaterias
+        ? ` ${pendingImport.materias.length} matéria(s) válida(s) também serão consideradas.`
+        : '';
+    const invalidos = pendingImport.ignoradas.length + (pendingImport.metasIgnoradas?.length || 0) + (pendingImport.materiasIgnoradas?.length || 0);
+    $('importSummary').textContent = `${pendingImport.novos.length} registro(s) válido(s) encontrados em ${tipo.toUpperCase()}.${metasInfo}${materiasInfo} ${invalidos ? `${invalidos} linha(s)/item(ns) serão ignorados.` : 'Nenhum item inválido encontrado.'}`;
     $('modalImport').showModal();
 }
 
@@ -1323,6 +1952,7 @@ function aplicarImportacao() {
     let duplicados = 0;
     let metasAdicionadas = 0;
     let metasDuplicadas = 0;
+    let materiasAdicionadas = 0;
 
     if (modo === 'replace') {
         registros = pendingImport.novos.map((r, i) => ({ ...r, id: Date.now() + i }));
@@ -1330,6 +1960,10 @@ function aplicarImportacao() {
             metas = pendingImport.metas.map((meta, i) => ({ ...meta, id: Date.now() + i + 7000 }));
             metasAdicionadas = metas.length;
         }
+        materias = pendingImport.temMaterias
+            ? pendingImport.materias.map((materia, i) => ({ ...materia, id: Date.now() + i + 11000 }))
+            : [];
+        materiasAdicionadas = materias.length;
     } else {
         const existentes = new Set(registros.map(chaveRegistro));
         const paraAdicionar = [];
@@ -1360,11 +1994,19 @@ function aplicarImportacao() {
             metas = metas.concat(metasParaAdicionar);
             metasAdicionadas = metasParaAdicionar.length;
         }
+
+        if (pendingImport.temMaterias) {
+            const antes = materias.length;
+            pendingImport.materias.forEach(materia => mesclarMateriaNoCatalogo(materia, { reativar: false }));
+            materiasAdicionadas = Math.max(0, materias.length - antes);
+        }
     }
 
     sortByDate(registros);
+    sincronizarCatalogoComDados();
     salvar();
     if (pendingImport.temMetas) salvarMetas();
+    salvarMaterias();
     const metaMsgs = avaliarMetasAtingidas();
     limparForm();
     renderizar();
@@ -1372,10 +2014,13 @@ function aplicarImportacao() {
     const resumoMetas = pendingImport.temMetas
         ? ` ${modo === 'replace' ? `${metasAdicionadas} meta(s) carregada(s).` : `${metasAdicionadas} meta(s) adicionada(s)${metasDuplicadas ? `, ${metasDuplicadas} duplicada(s) ignorada(s)` : ''}.`}`
         : '';
+    const resumoMaterias = pendingImport.temMaterias
+        ? ` ${modo === 'replace' ? `${materiasAdicionadas} matéria(s) carregada(s).` : `${materiasAdicionadas} matéria(s) nova(s) no catálogo.`}`
+        : '';
     const resumoImport = modo === 'replace'
         ? `Importação concluída: ${registros.length} registro(s) carregado(s).`
         : `Importação concluída: ${adicionados} adicionado(s)${duplicados ? `, ${duplicados} duplicado(s) ignorado(s)` : ''}.`;
-    showToast([resumoImport, resumoMetas, ...metaMsgs].join(' ').trim(), { type: 'success', duration: 8000 });
+    showToast([resumoImport, resumoMetas, resumoMaterias, ...metaMsgs].join(' ').trim(), { type: 'success', duration: 8000 });
     pendingImport = null;
 }
 
@@ -1409,6 +2054,127 @@ function debounce(func, delay) {
     };
 }
 
+function adicionarMateriaPeloFormulario() {
+    const input = $('newSubjectName');
+    const nome = normalizarTexto(input.value, 80);
+    if (!nome) {
+        showToast('Informe o nome da matéria.', { type: 'warning' });
+        input.focus();
+        return;
+    }
+    const existente = materiaPorNome(nome);
+    if (existente?.active !== false) {
+        renderSubjectSelect(existente.name);
+        renderAulasDaMateriaAtiva();
+        showToast('Essa matéria já está ativa.', { type: 'warning' });
+        return;
+    }
+    const materia = existente || garantirMateria(nome, { active: true });
+    materia.active = true;
+    salvarMaterias();
+    input.value = '';
+    renderizarCatalogoUI();
+    $('subjectSelect').value = materia.name;
+    renderAulasDaMateriaAtiva();
+    atualizarSugestoesAula();
+    showToast('Matéria adicionada.', { type: 'success' });
+}
+
+function excluirMateriaAtiva() {
+    const nome = $('subjectSelect').value;
+    const materia = materiaPorNome(nome);
+    if (!materia || materia.active === false) return;
+    if (materiasAtivas().length <= 1) {
+        showToast('Mantenha ao menos uma matéria ativa para registrar aulas.', { type: 'warning' });
+        return;
+    }
+    materia.active = false;
+    salvarMaterias();
+    renderSubjectSelect(primeiraMateriaAtiva());
+    renderizar();
+    showToast(`Matéria "${materia.name}" excluída da lista ativa. O histórico foi preservado.`, { type: 'warning', duration: 7000 });
+}
+
+function adicionarAulaPeloFormulario() {
+    const input = $('newLessonName');
+    const subjectName = $('subjectSelect').value;
+    const aula = normalizarTexto(input.value, 100);
+    const materia = materiaPorNome(subjectName);
+    if (!materia || materia.active === false) {
+        showToast('Escolha uma matéria ativa para adicionar aula.', { type: 'warning' });
+        return;
+    }
+    if (!aula) {
+        showToast('Informe o nome da aula.', { type: 'warning' });
+        input.focus();
+        return;
+    }
+    const adicionou = adicionarAulaAoCatalogo(subjectName, aula, { apenasSeAtiva: true });
+    if (!adicionou) {
+        showToast('Essa aula já está cadastrada nesta matéria.', { type: 'warning' });
+        return;
+    }
+    salvarMaterias();
+    input.value = '';
+    renderAulasDaMateriaAtiva();
+    atualizarSugestoesAula();
+    showToast('Aula adicionada à matéria.', { type: 'success' });
+}
+
+function atualizarPreferenciasGraficoDosControles({ incluirListas = true } = {}) {
+    chartPrefs.chartType = $('chartType').value;
+    chartPrefs.startDate = dataIsoValida($('chartStartDate').value) ? $('chartStartDate').value : '';
+    chartPrefs.endDate = dataIsoValida($('chartEndDate').value) ? $('chartEndDate').value : '';
+    chartPrefs.showDesempenho = $('chartShowDesempenho').checked;
+    chartPrefs.showAula = $('chartShowAula').checked;
+    if (incluirListas) {
+        chartPrefs.selectedSubjects = valoresCheckboxes('chartSubjectFilters');
+        chartPrefs.selectedLessons = valoresCheckboxes('chartLessonFilters');
+    }
+    salvarPreferenciasGrafico();
+}
+
+function abrirModalGrafico(trigger = null) {
+    lastChartTrigger = trigger;
+    const modal = $('modalChart');
+    renderChartFilterOptions();
+    modal.classList.remove('is-closing');
+    modal.showModal();
+    requestAnimationFrame(() => {
+        $('btnCloseChart').focus();
+        renderGrafico();
+        if (chartInstance) chartInstance.resize();
+    });
+}
+
+function fecharModalGrafico() {
+    const modal = $('modalChart');
+    if (!modal.open || modal.classList.contains('is-closing')) return;
+    modal.classList.add('is-closing');
+    setTimeout(() => {
+        modal.close();
+        modal.classList.remove('is-closing');
+        if (chartInstance) {
+            chartInstance.destroy();
+            chartInstance = null;
+        }
+        if (lastChartTrigger) lastChartTrigger.focus();
+    }, 150);
+}
+
+function limparFiltrosGrafico() {
+    chartPrefs.selectedSubjects = null;
+    chartPrefs.selectedLessons = null;
+    chartPrefs.startDate = '';
+    chartPrefs.endDate = '';
+    chartPrefs.chartType = 'line';
+    chartPrefs.showDesempenho = true;
+    chartPrefs.showAula = true;
+    aplicarPreferenciasGraficoUI();
+    salvarPreferenciasGrafico();
+    renderGrafico();
+}
+
 function configurarEventos() {
     $('avaliacaoForm').addEventListener('submit', e => {
         e.preventDefault();
@@ -1428,16 +2194,37 @@ function configurarEventos() {
         adicionarMeta();
     });
 
-    ['goalLesson', 'goalDate', 'goalLevel'].forEach(id => {
+    ['goalSubject', 'goalLesson', 'goalDate', 'goalLevel'].forEach(id => {
         $(id).addEventListener('input', () => {
             $(id).classList.remove('is-invalid');
             $('goalError').textContent = '';
+            if (id === 'goalSubject') atualizarSugestoesAula();
         });
     });
+    $('goalSubject').addEventListener('change', atualizarSugestoesAula);
 
     $('listaMetas').addEventListener('click', e => {
         const delBtn = e.target.closest('.btn-del-goal');
         if (delBtn) excluirMeta(Number(delBtn.dataset.id));
+    });
+
+    $('subjectSelect').addEventListener('change', () => {
+        $('subjectSelect').classList.remove('is-invalid');
+        $('subjectSelectError').textContent = '';
+        renderAulasDaMateriaAtiva();
+        atualizarSugestoesAula();
+        salvarRascunho();
+    });
+
+    $('btnAddSubject').addEventListener('click', adicionarMateriaPeloFormulario);
+    $('btnDeleteSubject').addEventListener('click', excluirMateriaAtiva);
+    $('btnAddLesson').addEventListener('click', adicionarAulaPeloFormulario);
+    ['newSubjectName', 'newLessonName'].forEach(id => {
+        $(id).addEventListener('keydown', e => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            id === 'newSubjectName' ? adicionarMateriaPeloFormulario() : adicionarAulaPeloFormulario();
+        });
     });
 
     ['lessonName', 'lessonDate', 'observation'].forEach(id => {
@@ -1478,6 +2265,7 @@ function configurarEventos() {
         atualizarOpcaoExportFiltros();
     };
     const renderListaDebounced = debounce(atualizarListaEFiltrosExport, 250);
+    $('filtroMateria').addEventListener('change', atualizarListaEFiltrosExport);
     $('filtroAula').addEventListener('input', renderListaDebounced);
     $('filtroData').addEventListener('input', atualizarListaEFiltrosExport);
     $('sortHistorico').addEventListener('change', () => {
@@ -1485,23 +2273,35 @@ function configurarEventos() {
         atualizarListaEFiltrosExport();
     });
 
-    document.querySelectorAll('.segmented [data-period]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            chartPrefs.period = btn.dataset.period;
-            aplicarPreferenciasGraficoUI();
-            salvarPreferenciasGrafico();
-            renderGrafico();
-        });
+    $('btnOpenChart').addEventListener('click', e => abrirModalGrafico(e.currentTarget));
+    $('btnCloseChart').addEventListener('click', fecharModalGrafico);
+    $('modalChart').addEventListener('cancel', e => {
+        e.preventDefault();
+        fecharModalGrafico();
     });
-
-    ['showDesempenho', 'showAula'].forEach(id => {
+    $('modalChart').addEventListener('click', e => {
+        if (e.target === $('modalChart')) fecharModalGrafico();
+    });
+    $('chartSubjectFilters').addEventListener('change', () => {
+        chartPrefs.selectedSubjects = valoresCheckboxes('chartSubjectFilters');
+        chartPrefs.selectedLessons = null;
+        renderChartFilterOptions();
+        atualizarPreferenciasGraficoDosControles();
+        renderGrafico();
+    });
+    $('chartLessonFilters').addEventListener('change', () => {
+        atualizarPreferenciasGraficoDosControles();
+        atualizarResumoFiltrosGrafico();
+        renderGrafico();
+    });
+    ['chartType', 'chartStartDate', 'chartEndDate', 'chartShowDesempenho', 'chartShowAula'].forEach(id => {
         $(id).addEventListener('change', () => {
-            chartPrefs.showDesempenho = $('showDesempenho').checked;
-            chartPrefs.showAula = $('showAula').checked;
-            salvarPreferenciasGrafico();
+            atualizarPreferenciasGraficoDosControles({ incluirListas: false });
+            atualizarResumoFiltrosGrafico();
             renderGrafico();
         });
     });
+    $('btnClearChartFilters').addEventListener('click', limparFiltrosGrafico);
 
     const salvarNomeAluno = debounce(() => {
         localStorage.setItem(STUDENT_NAME_KEY, $('studentName').value.trim());
@@ -1525,9 +2325,10 @@ function configurarEventos() {
         const formato = $('exportFormato').value;
         if (formato === 'json') {
             const payload = {
-                meta: { version: 3, exportedAt: new Date().toISOString(), studentName: $('studentName').value.trim() },
+                meta: { version: 4, exportedAt: new Date().toISOString(), studentName: $('studentName').value.trim() },
                 registros: regs,
-                metas
+                metas,
+                materias
             };
             baixarArquivo(JSON.stringify(payload, null, 2), 'application/json', 'json');
         } else {
@@ -1570,11 +2371,12 @@ function configurarEventos() {
 }
 
 function aplicarPreferenciasGraficoUI() {
-    $('showDesempenho').checked = chartPrefs.showDesempenho;
-    $('showAula').checked = chartPrefs.showAula;
-    document.querySelectorAll('.segmented [data-period]').forEach(btn => {
-        btn.setAttribute('aria-pressed', btn.dataset.period === chartPrefs.period);
-    });
+    $('chartShowDesempenho').checked = chartPrefs.showDesempenho;
+    $('chartShowAula').checked = chartPrefs.showAula;
+    $('chartType').value = chartPrefs.chartType;
+    $('chartStartDate').value = chartPrefs.startDate || '';
+    $('chartEndDate').value = chartPrefs.endDate || '';
+    renderChartFilterOptions();
 }
 
 function registrarServiceWorker() {
@@ -1594,10 +2396,12 @@ function init() {
     atualizarTituloAluno();
     configurarRubrica();
     $('sortHistorico').value = localStorage.getItem(SORT_KEY) || 'recent';
-    aplicarPreferenciasGraficoUI();
     carregar();
     carregarMetas();
+    carregarMaterias();
+    aplicarPreferenciasGraficoUI();
     avaliarMetasAtingidas();
+    renderizarCatalogoUI();
     restaurarRascunho();
     configurarEventos();
     atualizarContadores();
