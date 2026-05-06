@@ -35,7 +35,8 @@ e este projeto utiliza o histórico de commits como referência cronológica.
 - **Deploy do GitLab Pages** — artefato publicado passa a incluir `logo.png`, `manifest.webmanifest` e `sw.js`, necessários para ícone, manifesto e funcionamento offline.
 
 ### Corrigido
-- **Atualização do PWA após mudanças no aluno** — cache do service worker avançado para `rubrica-static-v2`, evitando que navegadores continuem servindo `aluno/script.js` e `aluno/styles.css` antigos depois da publicação.
+- **Modal do gráfico centralizado e maior** — o reset global de margem removia o `margin: auto` nativo do `<dialog>`, fazendo o popup abrir no canto superior esquerdo. Dialogs agora são centralizados explicitamente e o modal do gráfico ocupa quase toda a viewport.
+- **Atualização do PWA após mudanças no aluno** — cache do service worker avançado para `rubrica-static-v3`, evitando que navegadores continuem servindo `aluno/script.js` e `aluno/styles.css` antigos depois da publicação.
 - **Data local compartilhada** — `hoje()` em `shared/utils.js` agora usa data local em vez de `toISOString()`, evitando dia incorreto perto da meia-noite em fusos como America/Sao_Paulo. Isso corrige também o portal do professor, que consome o helper compartilhado.
 - **Histórico menos verboso para leitor de tela** — `aria-live` saiu da lista inteira e ficou no resumo do histórico, evitando reanúncio de todos os cards ao filtrar/ordenar.
 - **Duplicidade manual aula+data** — salvar ou atualizar bloqueia outro registro da mesma aula na mesma data, comparando sem diferenciar maiúsculas/minúsculas ou acentos.

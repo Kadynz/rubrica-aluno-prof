@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rubrica-static-v2';
+const CACHE_NAME = 'rubrica-static-v3';
 
 const CORE_ASSETS = [
     './',
