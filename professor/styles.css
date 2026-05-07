@@ -433,8 +433,12 @@ footer {
 
 /* === Dialog LGPD / menu foto === */
 .foto-dialog {
+    position: fixed;
+    inset: 0;
     max-width: 520px;
     width: 92%;
+    max-height: calc(100dvh - 32px);
+    margin: auto;
     border: none;
     border-radius: 22px;
     padding: 0;

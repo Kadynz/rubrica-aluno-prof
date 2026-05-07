@@ -10,7 +10,7 @@ e este projeto utiliza o histórico de commits como referência cronológica.
 ## [Unreleased]
 
 ### Adicionado
-- **Matérias e aulas no portal do aluno** — novo catálogo local em `portfolio_aluno_subjects_v1`, com criação de matérias, criação de aulas dentro da matéria ativa e cadastro automático de aula digitada ao salvar uma avaliação. Registros passam a guardar `subjectName` junto de `lessonName`; registros antigos sem matéria são migrados para `Geral`.
+- **Matérias e aulas no portal do aluno** — novo catálogo local em `portfolio_aluno_subjects_v1`, com criação de matérias e cadastro automático da aula digitada ao salvar uma avaliação. Registros passam a guardar `subjectName` junto de `lessonName`; registros antigos sem matéria são migrados para `Geral`.
 - **Gráfico interativo em modal no portal do aluno** — o gráfico pequeno foi substituído por botão "Ver gráfico", abrindo um `dialog` quase tela cheia com backdrop em blur, fechamento por botão/Esc/backdrop e filtros por matéria, aula, datas, séries e tipo de gráfico (`line`, `bar`, barra horizontal, pizza, donut e radar).
 - **Backup pré-migração de dados do aluno** — antes de gravar a primeira migração para matérias, o JSON antigo de `portfolio_aluno_v1` é preservado em `portfolio_aluno_backup_pre_materias_v1`.
 - **Portal do aluno: fluxo de autoavaliação ampliado** — selects de níveis substituídos por chips visuais sem pré-seleção, observação opcional por registro, autocomplete de aulas recentes, atalhos de data, rascunho em `sessionStorage`, campo "Meu nome" persistido em `localStorage`, link de volta ao início e aviso de backup local.
@@ -23,32 +23,42 @@ e este projeto utiliza o histórico de commits como referência cronológica.
 - **Cruzamento desempenho × aula** — mini-quadrante do aluno compara desempenho próprio com percepção da aula e destaca a média nas aulas marcadas como excelentes.
 
 ### Alterado
+- **Navegação com destino explícito** — botões do `index.html` raiz agora apontam diretamente para `aluno/index.html` e `professor/index.html`, e o link "Voltar para o início" do aluno aponta para `../index.html`.
+- **Tema aplicado antes do CSS** — páginas raiz, aluno e professor inicializam o tema salvo no `<head>`, antes dos estilos carregarem; `shared/theme.js` passou a sincronizar `data-theme` no `<html>` e no `<body>`.
+- **Cabeçalho do aluno simplificado** — removido o subtítulo repetido abaixo de "Portfólio de..." e os botões de importar/exportar ganharam estilo mais compacto, visível e com hover/focus destacado.
+- **Rodapés com crédito acadêmico** — textos de rodapé do aluno e professor foram atualizados para informar "Programado por Arthur Peres Rodrigues para fins acadêmicos".
 - **Histórico, metas e sugestões do aluno por matéria** — histórico passa a exibir matéria + aula e ganha filtro por matéria; metas aceitam matéria opcional; sugestões de aula são filtradas pela matéria selecionada.
 - **Importação/exportação do aluno com matérias** — JSON de backup passa a incluir `materias`; CSV exportado passa a ter coluna `Matéria`; CSV antigo sem essa coluna continua importando e cai na matéria `Geral`.
 - **Exclusão de matéria preserva histórico** — remover matéria a deixa inativa no catálogo sem apagar registros existentes; aulas da matéria excluída deixam de aparecer como opções ativas.
 - **Acessibilidade do tema compartilhado** — botão de tema passa a anunciar estado com `aria-pressed` e rótulo contextual.
-- **Rubrica do aluno colapsável** — critérios de rubrica agora ficam em `<details>` com estado salvo em `sessionStorage`; em primeiro acesso, abre no desktop e fica recolhida no mobile para reduzir rolagem até o formulário.
-- **Rubrica do aluno por sessão** — o estado aberto/fechado da rubrica passou de `localStorage` para `sessionStorage`, evitando carregar preferência de outro aluno em dispositivo compartilhado.
 - **Gráfico imprimível do aluno** — o card de evolução agora gera uma versão SVG vetorial para `@media print`, evitando depender do `<canvas>` do Chart.js na impressão.
 - **Exportação com resumo de filtros** — a opção "Filtros do histórico" no modal informa contagem e período coberto pelos registros filtrados, e esse resumo é atualizado ao vivo quando os filtros mudam.
 - **JSON de backup do aluno** — exportação JSON passa a incluir também as metas locais; importação JSON mescla ou substitui metas quando o arquivo traz esse campo.
 - **Deploy do GitLab Pages** — artefato publicado passa a incluir `logo.png`, `manifest.webmanifest` e `sw.js`, necessários para ícone, manifesto e funcionamento offline.
 
 ### Corrigido
+- **Estado vazio de Destaques centralizado** — mensagem "Os destaques aparecem depois dos primeiros registros." agora ocupa a largura inteira do grid e mantém ícone/texto alinhados no centro.
+- **Flash claro ao voltar para o início** — tema escuro deixa de piscar como claro por alguns instantes ao navegar entre aluno/professor e a página inicial.
+- **Dialog de responsabilidade por foto centralizado** — modal LGPD do professor deixa de abrir no canto superior esquerdo quando o reset global remove a margem padrão do `<dialog>`.
 - **Modal do gráfico centralizado e maior** — o reset global de margem removia o `margin: auto` nativo do `<dialog>`, fazendo o popup abrir no canto superior esquerdo. Dialogs agora são centralizados explicitamente e o modal do gráfico ocupa quase toda a viewport.
-- **Atualização do PWA após mudanças no aluno** — cache do service worker avançado para `rubrica-static-v3`, evitando que navegadores continuem servindo `aluno/script.js` e `aluno/styles.css` antigos depois da publicação.
+- **Atualização do PWA após mudanças no aluno** — cache do service worker avançado para `rubrica-static-v6`, evitando que navegadores continuem servindo assets antigos depois da publicação.
 - **Data local compartilhada** — `hoje()` em `shared/utils.js` agora usa data local em vez de `toISOString()`, evitando dia incorreto perto da meia-noite em fusos como America/Sao_Paulo. Isso corrige também o portal do professor, que consome o helper compartilhado.
 - **Histórico menos verboso para leitor de tela** — `aria-live` saiu da lista inteira e ficou no resumo do histórico, evitando reanúncio de todos os cards ao filtrar/ordenar.
 - **Duplicidade manual aula+data** — salvar ou atualizar bloqueia outro registro da mesma aula na mesma data, comparando sem diferenciar maiúsculas/minúsculas ou acentos.
 - **Duplicidade com contexto visual** — ao tentar salvar duplicado, o histórico filtra, rola e destaca o registro existente.
 - **Marcos combinados** — toasts de marcos agora concatenam mensagens quando mais de uma conquista acontece no mesmo salvamento.
 
+### Removido
+- **Rubrica visual no portal do aluno** — removido o bloco de título, legenda e critérios de rubrica por ser redundante com os próprios controles do formulário.
+- **Cadastro duplicado de aula no aluno** — removida a seção "Nova aula nesta matéria", sua lista de aulas, botão de exclusão de matéria ativa e o JS/CSS associado; a aula digitada em "Nome da aula / atividade" continua alimentando o catálogo ao salvar.
+- **Código morto e estilos sem uso** — removidos estado de abertura da rubrica do aluno, variáveis CSS órfãs, classes/atributos sem uso no professor e exposição global desnecessária de `aplicarTemaAosGraficos`.
+
 ---
 
 ## [2026-04-25]
 
 ### Adicionado
-- **Tema claro/escuro na página inicial (`index.html` raiz)** — paleta convertida para variáveis CSS (`--bg-page`, `--bg-card`, `--text-main`, `--shadow`, `--border-card`, `--btn-aluno-bg`, `--btn-prof-bg`, `--btn-text`, `--toggle-border`) com override em `body[data-theme="dark"]`. Botão FAB `#btnThemeToggle` (52px, canto inferior direito, ícone `fa-moon`/`fa-sun`) e include de `shared/theme.js` reutilizam o mesmo *toggle* já presente nos portais do aluno e do professor. Font Awesome 6.0.0-beta3 incluído com SRI (mesmo hash usado nos portais). Cores do tema escuro (`#0f172a` base, `#1e293b` card, `#f8fafc` texto) alinhadas com a paleta dos portais.
+- **Tema claro/escuro na página inicial (`index.html` raiz)** — paleta convertida para variáveis CSS (`--bg-page`, `--bg-card`, `--text-main`, `--shadow`, `--border-card`, `--btn-aluno-bg`, `--btn-prof-bg`, `--btn-text`, `--toggle-border`) com override em `[data-theme="dark"]`. Botão FAB `#btnThemeToggle` (52px, canto inferior direito, ícone `fa-moon`/`fa-sun`) e include de `shared/theme.js` reutilizam o mesmo *toggle* já presente nos portais do aluno e do professor. Font Awesome 6.0.0-beta3 incluído com SRI (mesmo hash usado nos portais). Cores do tema escuro (`#0f172a` base, `#1e293b` card, `#f8fafc` texto) alinhadas com a paleta dos portais.
 - **Padrão global do tema agora é escuro** — `shared/theme.js` passou a usar `localStorage.getItem('theme') || 'dark'` (antes `|| 'light'`). Usuários sem preferência salva (primeiro acesso, modo anônimo, novo dispositivo) abrem todas as três páginas em tema escuro. Usuários com preferência já persistida não são afetados.
 - **Exportação e importação de dados no portal do aluno** — botões "Exportar" e "Importar" no cabeçalho da Rubrica (espelhando o portal do professor) e modal `#modalExport` com seletor de formato. Suporta JSON (`{ registros: [...] }`, com `id`, `lessonName`, `date`, `studentLevel`, `classLevel`) e CSV (`Data;Aula;Meu Desempenho;Avaliação da Aula`, separador `;`, BOM UTF-8 para abrir no Excel sem mojibake). A importação saneia entradas (`intNoIntervalo` clampa níveis em `[1,4]` com fallback `3`; `dataIsoValida` exige `YYYY-MM-DD`), exige confirmação antes de substituir os registros e isola linhas inválidas reportando-as ao final em vez de abortar. Helpers `parseCSV`, `escapeCSV`, `intNoIntervalo`, `dataIsoValida` e `baixarArquivo` foram replicados localmente em `aluno/script.js` (sem refatoração para `shared/` neste commit, evitando regressão no portal do professor).
 

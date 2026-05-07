@@ -1356,7 +1356,7 @@ function renderGrafico() {
 function renderInsights() {
     const el = $('insights');
     if (registros.length < 2) {
-        el.innerHTML = '<div class="empty-message"><i class="fas fa-seedling"></i><br>Os destaques aparecem depois dos primeiros registros.</div>';
+        el.innerHTML = '<div class="empty-message"><i class="fas fa-seedling"></i><span>Os destaques aparecem depois dos primeiros registros.</span></div>';
         return;
     }
 

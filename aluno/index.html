@@ -7,6 +7,17 @@
     <link rel="icon" type="image/png" href="../logo.png">
     <link rel="manifest" href="../manifest.webmanifest">
     <meta name="theme-color" content="#3b82f6">
+    <script>
+        (function () {
+            try {
+                if ((localStorage.getItem('theme') || 'dark') === 'dark') {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+            } catch {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
           integrity="sha384-5e2ESR8Ycmos6g3gAKr1Jvwye8sW4U1u/cAKulfVJnkakCcMqhOudbtPnvJ+nbv7"
           crossorigin="anonymous" referrerpolicy="no-referrer">
@@ -22,7 +33,7 @@
     <section class="card card-intro" aria-labelledby="tituloAluno">
         <div class="card-header header-with-actions">
             <div class="header-main">
-                <a class="back-link" href="../"><i class="fas fa-arrow-left"></i> Voltar para o início</a>
+                <a class="back-link" href="../index.html"><i class="fas fa-arrow-left"></i> Voltar para o início</a>
                 <div class="header-title">
                     <i class="fas fa-graduation-cap"></i>
                     <h1 id="tituloAluno">Meu Portfólio</h1>
@@ -251,7 +262,7 @@
             <h2 id="tituloDestaques">Destaques</h2>
         </div>
         <div id="insights" class="insights-grid">
-            <div class="empty-message"><i class="fas fa-seedling"></i><br>Os destaques aparecem depois dos primeiros registros.</div>
+            <div class="empty-message"><i class="fas fa-seedling"></i><span>Os destaques aparecem depois dos primeiros registros.</span></div>
         </div>
     </section>
 

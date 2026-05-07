@@ -7,6 +7,17 @@
     <link rel="icon" type="image/png" href="logo.png">
     <link rel="manifest" href="manifest.webmanifest">
     <meta name="theme-color" content="#3b82f6">
+    <script>
+        (function () {
+            try {
+                if ((localStorage.getItem('theme') || 'dark') === 'dark') {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+            } catch {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
           integrity="sha384-5e2ESR8Ycmos6g3gAKr1Jvwye8sW4U1u/cAKulfVJnkakCcMqhOudbtPnvJ+nbv7"
           crossorigin="anonymous" referrerpolicy="no-referrer">
@@ -22,7 +33,7 @@
             --btn-text: #ffffff;
             --toggle-border: #cbd5e1;
         }
-        body[data-theme="dark"] {
+        [data-theme="dark"] {
             --bg-page: #0f172a;
             --bg-card: #1e293b;
             --text-main: #f8fafc;
@@ -112,8 +123,8 @@
     <div class="container">
         <h1>Rubrica de Auto-avaliação e Avaliação de Alunos</h1>
         <div class="btn-group">
-            <a href="aluno/" class="btn btn-aluno">🎒 Portal do Aluno</a>
-            <a href="professor/" class="btn btn-prof">👨‍🏫 Portal do Professor</a>
+            <a href="aluno/index.html" class="btn btn-aluno">🎒 Portal do Aluno</a>
+            <a href="professor/index.html" class="btn btn-prof">👨‍🏫 Portal do Professor</a>
         </div>
     </div>
     <button id="btnThemeToggle" aria-label="Alternar tema claro/escuro">

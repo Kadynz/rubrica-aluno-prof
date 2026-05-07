@@ -5,11 +5,29 @@
 (function () {
     const KEY = 'theme';
 
-    const inicial = localStorage.getItem(KEY) || 'dark';
-    if (inicial === 'dark') document.body.setAttribute('data-theme', 'dark');
+    function temaSalvo() {
+        try {
+            return localStorage.getItem(KEY) || 'dark';
+        } catch {
+            return 'dark';
+        }
+    }
+
+    function aplicarTema(theme) {
+        const escuro = theme === 'dark';
+        if (escuro) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            if (document.body) document.body.setAttribute('data-theme', 'dark');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+            if (document.body) document.body.removeAttribute('data-theme');
+        }
+    }
+
+    aplicarTema(temaSalvo());
 
     function estaEscuro() {
-        return document.body.getAttribute('data-theme') === 'dark';
+        return document.documentElement.getAttribute('data-theme') === 'dark';
     }
 
     // Aplica defaults de Chart.js ao tema atual. No-op se Chart.js não foi
@@ -42,9 +60,13 @@
 
         btn.addEventListener('click', () => {
             const escuro = estaEscuro();
-            if (escuro) document.body.removeAttribute('data-theme');
-            else document.body.setAttribute('data-theme', 'dark');
-            localStorage.setItem(KEY, escuro ? 'light' : 'dark');
+            const novoTema = escuro ? 'light' : 'dark';
+            aplicarTema(novoTema);
+            try {
+                localStorage.setItem(KEY, novoTema);
+            } catch {
+                // O tema visual já foi aplicado; a persistência pode falhar em modo privado.
+            }
             atualizarIcone();
             notificar();
         });
