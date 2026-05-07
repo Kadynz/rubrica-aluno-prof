@@ -18,15 +18,14 @@
 <body>
 <main class="container">
 
-    <!-- Rubrica / identidade -->
+    <!-- Identidade -->
     <section class="card card-intro" aria-labelledby="tituloAluno">
         <div class="card-header header-with-actions">
-            <div class="header-title">
-                <i class="fas fa-graduation-cap"></i>
-                <div>
-                    <a class="back-link" href="../"><i class="fas fa-arrow-left"></i> Voltar para o início</a>
+            <div class="header-main">
+                <a class="back-link" href="../"><i class="fas fa-arrow-left"></i> Voltar para o início</a>
+                <div class="header-title">
+                    <i class="fas fa-graduation-cap"></i>
                     <h1 id="tituloAluno">Meu Portfólio</h1>
-                    <span class="subtitle">Auto-avaliação do aluno</span>
                 </div>
             </div>
             <div class="acoes-dados">
@@ -44,29 +43,6 @@
             <p class="local-note"><i class="fas fa-floppy-disk"></i> Seus dados ficam só neste navegador. Exporte um backup periodicamente.</p>
         </div>
 
-        <details id="rubricaDetails" class="rubrica-details">
-            <summary class="rubrica-summary">
-                <span><i class="fas fa-star"></i> Rubrica de avaliação</span>
-                <small>ver critérios</small>
-            </summary>
-            <div class="badge-rubrica">
-            <div class="rubrica-section-label">Desempenho do aluno</div>
-            <div class="rubrica-grid">
-                <div class="nivel-item nivel-1">🔴 Nível 1<br>Iniciante</div>
-                <div class="nivel-item nivel-2">🟠 Nível 2<br>Básico</div>
-                <div class="nivel-item nivel-3">🔵 Nível 3<br>Proficiente</div>
-                <div class="nivel-item nivel-4">🟢 Nível 4<br>Avançado</div>
-            </div>
-            <div class="rubrica-section-label">Como foi a aula para mim</div>
-            <div class="rubrica-grid">
-                <div class="nivel-item nivel-1">🔴 Nível 1<br>Confusa</div>
-                <div class="nivel-item nivel-2">🟠 Nível 2<br>Regular</div>
-                <div class="nivel-item nivel-3">🔵 Nível 3<br>Boa</div>
-                <div class="nivel-item nivel-4">🟢 Nível 4<br>Excelente</div>
-            </div>
-            <div class="rubrica-hint">1 = com dificuldades | 2 = compreensão parcial | 3 = domínio independente | 4 = aplica e ensina</div>
-            </div>
-        </details>
     </section>
 
     <!-- Formulário -->
@@ -80,9 +56,8 @@
             <input type="hidden" id="studentLevel">
             <input type="hidden" id="classLevel">
 
-            <div class="subject-manager" aria-labelledby="tituloMateriasForm">
-                <div class="section-label-row">
-                    <h3 id="tituloMateriasForm"><i class="fas fa-layer-group"></i> Matérias e aulas</h3>
+            <div class="subject-manager" aria-label="Matérias">
+                <div class="subject-manager-summary">
                     <span id="subjectManagerHint" class="field-help" aria-live="polite"></span>
                 </div>
                 <div class="subject-grid">
@@ -99,17 +74,6 @@
                         </div>
                     </div>
                 </div>
-                <div class="lesson-manager">
-                    <div class="form-group">
-                        <label for="newLessonName"><i class="fas fa-list-check"></i> Nova aula nesta matéria</label>
-                        <div class="inline-action">
-                            <input type="text" id="newLessonName" placeholder="Ex: Frações equivalentes" maxlength="100" autocomplete="off">
-                            <button type="button" class="btn btn-secondary btn-sm" id="btnAddLesson"><i class="fas fa-plus"></i> Adicionar</button>
-                        </div>
-                    </div>
-                    <div id="activeLessonsList" class="lesson-tags" aria-live="polite"></div>
-                </div>
-                <button type="button" class="btn btn-ghost btn-sm btn-subject-delete" id="btnDeleteSubject"><i class="fas fa-trash-alt"></i> Excluir matéria ativa</button>
             </div>
 
             <div class="form-group">
@@ -441,7 +405,7 @@
 
 <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
-<footer>Auto-avaliação do aluno · funciona sem internet depois de carregado</footer>
+<footer>Auto-avaliação do aluno · Programado por Arthur Peres Rodrigues para fins acadêmicos</footer>
 
 <script src="../shared/utils.js"></script>
 <script src="../shared/theme.js"></script>

@@ -12,7 +12,6 @@ const DRAFT_KEY = 'portfolio_aluno_draft_v1';
 const STUDENT_NAME_KEY = 'portfolio_aluno_nome_v1';
 const CHART_PREFS_KEY = 'portfolio_aluno_chart_prefs_v1';
 const SORT_KEY = 'portfolio_aluno_sort_v1';
-const RUBRICA_OPEN_KEY = 'portfolio_aluno_rubrica_open_v1';
 const GOALS_KEY = 'portfolio_aluno_metas_v1';
 const SUBJECTS_KEY = 'portfolio_aluno_subjects_v1';
 const PRE_SUBJECTS_BACKUP_KEY = 'portfolio_aluno_backup_pre_materias_v1';
@@ -610,7 +609,7 @@ function preencherForm(r, { preservarMateria = false } = {}) {
     $('btnSalvar').innerHTML = r?.id ? '<i class="fas fa-pen"></i> Atualizar' : '<i class="fas fa-save"></i> Salvar';
     $('btnCancelar').hidden = !r?.id;
     atualizarContadores();
-    renderAulasDaMateriaAtiva();
+    renderResumoMaterias();
     atualizarSugestoesAula();
 }
 
@@ -653,7 +652,7 @@ function restaurarRascunho() {
         $('btnSalvar').innerHTML = draft.editId ? '<i class="fas fa-pen"></i> Atualizar' : '<i class="fas fa-save"></i> Salvar';
         $('btnCancelar').hidden = !draft.editId;
         atualizarContadores();
-        renderAulasDaMateriaAtiva();
+        renderResumoMaterias();
         atualizarSugestoesAula();
     } catch {
         sessionStorage.removeItem(DRAFT_KEY);
@@ -1583,38 +1582,17 @@ function aulasParaMeta(subjectName) {
     return valoresUnicosPorNome(nomes);
 }
 
-function renderAulasDaMateriaAtiva() {
-    const selected = $('subjectSelect').value;
-    const materia = materiaPorNome(selected);
-    const list = $('activeLessonsList');
-    const addBtn = $('btnAddLesson');
-    const input = $('newLessonName');
-    const deleteBtn = $('btnDeleteSubject');
+function renderResumoMaterias() {
     const hint = $('subjectManagerHint');
-    const ativa = materia?.active !== false;
-    const aulas = aulasAtivasDaMateria(selected);
-
-    addBtn.disabled = !ativa;
-    input.disabled = !ativa;
-    deleteBtn.disabled = !ativa || materiasAtivas().length <= 1;
+    if (!hint) return;
     hint.textContent = `${materiasAtivas().length} matéria(s) ativa(s).`;
-
-    if (!ativa) {
-        list.innerHTML = '<span class="empty-inline">Esta matéria foi excluída. Os registros antigos continuam no histórico.</span>';
-        return;
-    }
-    if (!aulas.length) {
-        list.innerHTML = '<span class="empty-inline">Nenhuma aula cadastrada nesta matéria. Adicione uma aula ou registre uma avaliação nova.</span>';
-        return;
-    }
-    list.innerHTML = aulas.slice(0, 24).map(aula => `<span class="lesson-tag"><i class="fas fa-book-open"></i> ${escapeHtml(aula)}</span>`).join('');
 }
 
 function renderizarCatalogoUI() {
     renderSubjectSelect($('subjectSelect')?.value || primeiraMateriaAtiva());
     renderGoalSubjectSelect();
     renderFiltroMateria();
-    renderAulasDaMateriaAtiva();
+    renderResumoMaterias();
     atualizarSugestoesAula();
     renderChartFilterOptions();
 }
@@ -1650,24 +1628,6 @@ function atualizarContadores() {
 function atualizarTituloAluno() {
     const nome = $('studentName').value.trim();
     $('tituloAluno').textContent = nome ? `Portfólio de ${nome}` : 'Meu Portfólio';
-}
-
-function atualizarResumoRubrica() {
-    const details = $('rubricaDetails');
-    const hint = details?.querySelector('.rubrica-summary small');
-    if (hint) hint.textContent = details.open ? 'ocultar critérios' : 'ver critérios';
-}
-
-function configurarRubrica() {
-    const details = $('rubricaDetails');
-    if (!details) return;
-    const pref = sessionStorage.getItem(RUBRICA_OPEN_KEY);
-    details.open = pref == null ? window.matchMedia('(min-width: 641px)').matches : pref === 'true';
-    atualizarResumoRubrica();
-    details.addEventListener('toggle', () => {
-        sessionStorage.setItem(RUBRICA_OPEN_KEY, String(details.open));
-        atualizarResumoRubrica();
-    });
 }
 
 function showToast(message, options = {}) {
@@ -2065,7 +2025,9 @@ function adicionarMateriaPeloFormulario() {
     const existente = materiaPorNome(nome);
     if (existente?.active !== false) {
         renderSubjectSelect(existente.name);
-        renderAulasDaMateriaAtiva();
+        renderResumoMaterias();
+        atualizarSugestoesAula();
+        salvarRascunho();
         showToast('Essa matéria já está ativa.', { type: 'warning' });
         return;
     }
@@ -2075,50 +2037,9 @@ function adicionarMateriaPeloFormulario() {
     input.value = '';
     renderizarCatalogoUI();
     $('subjectSelect').value = materia.name;
-    renderAulasDaMateriaAtiva();
+    renderResumoMaterias();
     atualizarSugestoesAula();
     showToast('Matéria adicionada.', { type: 'success' });
-}
-
-function excluirMateriaAtiva() {
-    const nome = $('subjectSelect').value;
-    const materia = materiaPorNome(nome);
-    if (!materia || materia.active === false) return;
-    if (materiasAtivas().length <= 1) {
-        showToast('Mantenha ao menos uma matéria ativa para registrar aulas.', { type: 'warning' });
-        return;
-    }
-    materia.active = false;
-    salvarMaterias();
-    renderSubjectSelect(primeiraMateriaAtiva());
-    renderizar();
-    showToast(`Matéria "${materia.name}" excluída da lista ativa. O histórico foi preservado.`, { type: 'warning', duration: 7000 });
-}
-
-function adicionarAulaPeloFormulario() {
-    const input = $('newLessonName');
-    const subjectName = $('subjectSelect').value;
-    const aula = normalizarTexto(input.value, 100);
-    const materia = materiaPorNome(subjectName);
-    if (!materia || materia.active === false) {
-        showToast('Escolha uma matéria ativa para adicionar aula.', { type: 'warning' });
-        return;
-    }
-    if (!aula) {
-        showToast('Informe o nome da aula.', { type: 'warning' });
-        input.focus();
-        return;
-    }
-    const adicionou = adicionarAulaAoCatalogo(subjectName, aula, { apenasSeAtiva: true });
-    if (!adicionou) {
-        showToast('Essa aula já está cadastrada nesta matéria.', { type: 'warning' });
-        return;
-    }
-    salvarMaterias();
-    input.value = '';
-    renderAulasDaMateriaAtiva();
-    atualizarSugestoesAula();
-    showToast('Aula adicionada à matéria.', { type: 'success' });
 }
 
 function atualizarPreferenciasGraficoDosControles({ incluirListas = true } = {}) {
@@ -2211,20 +2132,16 @@ function configurarEventos() {
     $('subjectSelect').addEventListener('change', () => {
         $('subjectSelect').classList.remove('is-invalid');
         $('subjectSelectError').textContent = '';
-        renderAulasDaMateriaAtiva();
+        renderResumoMaterias();
         atualizarSugestoesAula();
         salvarRascunho();
     });
 
     $('btnAddSubject').addEventListener('click', adicionarMateriaPeloFormulario);
-    $('btnDeleteSubject').addEventListener('click', excluirMateriaAtiva);
-    $('btnAddLesson').addEventListener('click', adicionarAulaPeloFormulario);
-    ['newSubjectName', 'newLessonName'].forEach(id => {
-        $(id).addEventListener('keydown', e => {
-            if (e.key !== 'Enter') return;
-            e.preventDefault();
-            id === 'newSubjectName' ? adicionarMateriaPeloFormulario() : adicionarAulaPeloFormulario();
-        });
+    $('newSubjectName').addEventListener('keydown', e => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        adicionarMateriaPeloFormulario();
     });
 
     ['lessonName', 'lessonDate', 'observation'].forEach(id => {
@@ -2394,7 +2311,6 @@ function init() {
     $('btnCancelar').hidden = true;
     $('studentName').value = localStorage.getItem(STUDENT_NAME_KEY) || '';
     atualizarTituloAluno();
-    configurarRubrica();
     $('sortHistorico').value = localStorage.getItem(SORT_KEY) || 'recent';
     carregar();
     carregarMetas();

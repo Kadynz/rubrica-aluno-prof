@@ -13,8 +13,6 @@
     --item-bg: #fefefe;
     --item-border: #e2e8f0;
     --item-hover: #94a3b8;
-    --item-active-bg: #f0fdf4;
-    --item-active-border: #16a34a;
     --aluno-active-bg: #eff6ff;
     --aluno-active-border: #3b82f6;
     --badge-bg: #f1f5f9;
@@ -29,7 +27,6 @@
     --chip4-bg: #dcfce7; --chip4-text: #166534;
     
     --evo1-bg: #fce7f3; --evo1-text: #9d174d;
-    --evo2-bg: #f1f5f9; --evo2-text: #475569;
 
     --btn-del-bg: #fff1f2; --btn-del-text: #ef4444;
 }
@@ -47,8 +44,6 @@
     --item-bg: #1e293b;
     --item-border: #334155;
     --item-hover: #64748b;
-    --item-active-bg: #064e3b;
-    --item-active-border: #10b981;
     --aluno-active-bg: #1e3a8a;
     --aluno-active-border: #3b82f6;
     --badge-bg: #334155;
@@ -63,7 +58,6 @@
     --chip4-bg: #14532d; --chip4-text: #86efac;
     
     --evo1-bg: #831843; --evo1-text: #f9a8d4;
-    --evo2-bg: #334155; --evo2-text: #cbd5e1;
 
     --btn-del-bg: #7f1d1d; --btn-del-text: #fca5a5;
 }

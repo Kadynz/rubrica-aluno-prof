@@ -52,7 +52,6 @@
 
     // Aplica defaults no carregamento inicial para o tema persistido.
     aplicarTemaAosGraficos();
-    window.aplicarTemaAosGraficos = aplicarTemaAosGraficos;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', montar);
